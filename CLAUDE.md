@@ -95,7 +95,10 @@ swift test
 swift build -Xswiftc -strict-concurrency=complete
 ```
 
-**IMPORTANT: Do NOT attempt to build Xcode projects**
+**IMPORTANT TESTING RULES:**
+- **Only run `swift test` when you have made changes to test code**
+- If you're implementing features without updating tests, do NOT run `swift test`
+- Use `swift build` to verify compilation after implementation changes
 - Never run `xcodebuild` commands on .xcodeproj files
 - The Example/ directory contains Xcode projects for manual testing only
 - Only use swift test and swift build commands for automated verification

@@ -18,7 +18,6 @@ public struct Query<T: Sendable>: DynamicProperty, ViewLifecycleAttachable {
     // MARK: - Internal State
     
     @State private var queryState = QueryState<T>()
-    @State private var hasAppeared = false
     @State private var hasInitialFetched = false
     @State private var networkCancellable: AnyCancellable?
     @Environment(\.reportError) private var reportError
@@ -115,6 +114,9 @@ public struct Query<T: Sendable>: DynamicProperty, ViewLifecycleAttachable {
     // MARK: - Lifecycle Handling
     
     private func handleInitialSetup() {
+        // Configure stale time for the query state
+        queryState.staleTime = options.staleTime
+        
         // Set initial data if provided and no data exists
         if queryState.status == .idle, let initialData = initialData {
             queryState.setSuccess(data: initialData)
@@ -215,7 +217,6 @@ extension Query {
     /// Reset the query to its initial state
     public func reset() {
         queryState.reset()
-        hasAppeared = false
     }
 }
 
@@ -224,13 +225,9 @@ extension Query {
 extension Query {
     /// Called when the view appears
     public func onAppear() {
-        if !hasAppeared {
-            hasAppeared = true
-            
-            // Only refetch on appear if configured to do so
-            if options.enabled && shouldRefetch(trigger: options.refetchOnAppear) {
-                executeQuery(isInitial: false)
-            }
+        // Only refetch on appear if configured to do so
+        if options.enabled && shouldRefetch(trigger: options.refetchOnAppear) {
+            executeQuery(isInitial: queryState.status == .idle)
         }
     }
     

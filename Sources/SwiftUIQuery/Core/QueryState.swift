@@ -8,6 +8,16 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Duration Extension
+
+extension Duration {
+    /// Convert Duration to TimeInterval (seconds)
+    var timeInterval: TimeInterval {
+        let (seconds, attoseconds) = self.components
+        return TimeInterval(seconds) + TimeInterval(attoseconds) / 1_000_000_000_000_000_000
+    }
+}
+
 // MARK: - QueryState
 
 /// The state container for a query, holding all status information and data.
@@ -32,8 +42,8 @@ public final class QueryState<T: Sendable> {
     /// Whether this is the initial fetch for this query
     public var isInitialLoading: Bool = false
     
-    /// Whether the data is considered stale and should be refetched
-    public var isStale: Bool = true
+    /// The stale time duration for this query
+    internal var staleTime: Duration = .zero
     
     // MARK: - Timestamps
     
@@ -73,6 +83,19 @@ public final class QueryState<T: Sendable> {
         data != nil
     }
     
+    /// Whether the data is considered stale and should be refetched
+    public var isStale: Bool {
+        // No data is always stale
+        guard let dataUpdatedAt = dataUpdatedAt else { return true }
+        
+        // If staleTime is zero, data is always stale
+        guard staleTime > .zero else { return true }
+        
+        // Check if data has exceeded stale time
+        let timeElapsed = Date().timeIntervalSince(dataUpdatedAt)
+        return timeElapsed > staleTime.timeInterval
+    }
+    
     // MARK: - Initialization
     
     public init() {}
@@ -81,7 +104,6 @@ public final class QueryState<T: Sendable> {
         self.data = data
         self.status = .success
         self.dataUpdatedAt = Date()
-        self.isStale = false
     }
     
     // MARK: - State Mutations
@@ -101,7 +123,6 @@ public final class QueryState<T: Sendable> {
         self.error = nil
         self.isFetching = false
         self.isInitialLoading = false
-        self.isStale = false
         self.dataUpdatedAt = Date()
         self.lastFetchedAt = Date()
     }
@@ -116,9 +137,9 @@ public final class QueryState<T: Sendable> {
         self.lastFetchedAt = Date()
     }
     
-    /// Mark data as stale
+    /// Mark data as stale by clearing the dataUpdatedAt timestamp
     public func markStale() {
-        isStale = true
+        dataUpdatedAt = nil
     }
     
     /// Reset the query to idle state
@@ -128,7 +149,6 @@ public final class QueryState<T: Sendable> {
         error = nil
         isFetching = false
         isInitialLoading = false
-        isStale = true
         dataUpdatedAt = nil
         errorUpdatedAt = nil
         lastFetchedAt = nil

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import swiftui_query
+import SwiftUIQuery
 
 struct ContentView: View {
 

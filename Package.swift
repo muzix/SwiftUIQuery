@@ -1,9 +1,9 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
-    name: "swiftui-query",
+    name: "SwiftUIQuery",
     platforms: [
         .iOS(.v16),
         .macOS(.v13),
@@ -12,8 +12,8 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "swiftui-query",
-            targets: ["swiftui-query"]
+            name: "SwiftUIQuery",
+            targets: ["SwiftUIQuery"]
         ),
     ],
     dependencies: [
@@ -21,15 +21,15 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "swiftui-query",
+            name: "SwiftUIQuery",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]
         ),
         .testTarget(
-            name: "swiftui-queryTests",
+            name: "SwiftUIQueryTests",
             dependencies: [
-                "swiftui-query",
+                "SwiftUIQuery",
                 .product(name: "ViewInspector", package: "ViewInspector")
             ],
             swiftSettings: [

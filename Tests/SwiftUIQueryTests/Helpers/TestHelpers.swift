@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import swiftui_query
+@testable import SwiftUIQuery
 
 // MARK: - Test Data Models
 
@@ -116,14 +116,12 @@ func waitFor(
 }
 
 /// Assert that a type conforms to Sendable
-func assertSendable<T>(_ type: T.Type) {
-    // This is a compile-time check
-    func requiresSendable<U: Sendable>(_ type: U.Type) {}
-    requiresSendable(type)
+func assertSendable<T: Sendable>(_ type: T.Type) {
+    // This is a compile-time check - T must conform to Sendable
 }
 
 /// Perform concurrent operations and collect results
-func performConcurrentOperations<T>(
+func performConcurrentOperations<T: Sendable>(
     count: Int = 100,
     operation: @escaping @Sendable () async throws -> T
 ) async throws -> [T] {

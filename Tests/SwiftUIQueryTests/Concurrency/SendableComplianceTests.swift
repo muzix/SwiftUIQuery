@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import swiftui_query
+@testable import SwiftUIQuery
 
 @Suite("Sendable Compliance Tests")
 struct SendableComplianceTests {
@@ -63,7 +63,7 @@ struct SendableComplianceTests {
             var value = 0
         }
         
-        let instance = await NonSendableClass()
+        let instance = NonSendableClass()
         
         // This would cause a compile error if we tried to access from multiple tasks:
         // await performConcurrentOperations(count: 10) {

@@ -1,5 +1,5 @@
 import Testing
-@testable import swiftui_query
+@testable import SwiftUIQuery
 
 @Suite("SwiftUI Query Main Test Suite")
 struct SwiftUIQueryTests {

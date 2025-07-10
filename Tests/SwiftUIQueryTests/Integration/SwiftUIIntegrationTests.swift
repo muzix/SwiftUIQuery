@@ -1,7 +1,7 @@
 import Testing
 import SwiftUI
 import ViewInspector
-@testable import swiftui_query
+@testable import SwiftUIQuery
 
 @Suite("SwiftUI Integration Tests")
 struct SwiftUIIntegrationTests {

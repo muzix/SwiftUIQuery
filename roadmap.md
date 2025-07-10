@@ -7,39 +7,39 @@ Based on the API design and core principles, this roadmap outlines the systemati
 **Goal**: Establish the basic infrastructure and type system
 
 ### 1.1 Project Setup
-- [ ] Initialize Swift package with proper structure
-- [ ] Configure Swift 6 strict concurrency settings (`-strict-concurrency=complete`)
-- [ ] Set up basic test infrastructure with XCTest
-- [ ] Create initial documentation structure with DocC
+- [x] Initialize Swift package with proper structure
+- [x] Configure Swift 6 strict concurrency settings (`-strict-concurrency=complete`)
+- [x] Set up basic test infrastructure with XCTest
+- [x] Create initial documentation structure with DocC
 
 ### 1.2 Core Type Definitions
-- [ ] Define `QueryKey` protocol (`Hashable` conformance)
-- [ ] Implement `QueryStatus` enum (`.idle`, `.loading`, `.success`, `.error`)
-- [ ] Create `QueryState<T: Sendable>` struct with `@Observable` macro
-- [ ] Define `RefetchTrigger` enum (`.never`, `.always`, `.ifStale`, `.when(() -> Bool)`)
-- [ ] Implement `ThrowOnError` enum (`.never`, `.always`, `.when((Error) -> Bool)`)
+- [x] Define `QueryKey` protocol (`Hashable` conformance)
+- [x] Implement `QueryStatus` enum (`.idle`, `.loading`, `.success`, `.error`)
+- [x] Create `QueryState<T: Sendable>` struct with `@Observable` macro
+- [x] Define `RefetchTrigger` enum (`.never`, `.always`, `.ifStale`, `.when(() -> Bool)`)
+- [x] Implement `ThrowOnError` enum (`.never`, `.always`, `.when((Error) -> Bool)`)
 
 ### 1.3 QueryOptions Structure
-- [ ] Implement complete `QueryOptions` struct with all TanStack Query equivalents:
+- [x] Implement complete `QueryOptions` struct with all TanStack Query equivalents:
   - `staleTime`, `gcTime`
   - `refetchOnAppear`, `refetchOnReconnect`, `refetchOnSceneActive`
   - `enabled`, `retry`, `throwOnError`, `networkMode`
-- [ ] Add sensible defaults matching TanStack Query behavior
-- [ ] Ensure all options are `Sendable` compliant
+- [x] Add sensible defaults matching TanStack Query behavior
+- [x] Ensure all options are `Sendable` compliant
 
 ### 1.4 Error Handling Foundation
-- [ ] Implement `ReportErrorKey` environment key
-- [ ] Create `ErrorBoundary` view modifier
-- [ ] Add error propagation mechanism through SwiftUI environment
+- [x] Implement `ReportErrorKey` environment key
+- [x] Create `ErrorBoundary` view modifier
+- [x] Add error propagation mechanism through SwiftUI environment
 
 ## Phase 2: Query Property Wrapper (Week 2)
 **Goal**: Implement the core `@Query` property wrapper with SwiftUI integration
 
 ### 2.1 Basic Property Wrapper
-- [ ] Implement `@Query<T: Sendable>` as `DynamicProperty`
-- [ ] Support initialization in view `init()` methods
-- [ ] Handle query key changes and automatic re-execution
-- [ ] Implement basic state management with `@State` and `@Observable`
+- [x] Implement `@Query<T: Sendable>` as `DynamicProperty`
+- [x] Support initialization in view `init()` methods
+- [x] Handle query key changes and automatic re-execution
+- [x] Implement basic state management with `@State` and `@Observable`
 
 ### 2.2 Lifecycle Integration
 - [ ] Create `AttachViewLifecycleModifier` for manual lifecycle attachment

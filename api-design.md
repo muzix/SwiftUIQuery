@@ -35,10 +35,10 @@ struct UserView {
     @Query(
         key: [FetchUserQuery(userId: "userId")],
         fetch: { try await apiClient.fetch(FetchUserQuery(userId: "userId")) },
-        select: { data in data.fragments.userFragment },
-        placeholderData: { previousData in previousData },
-        initialData: cachedUser,
         options: .init(
+            select: { data in data.fragments.userFragment },
+            placeholderData: { previousData in previousData },
+            initialData: cachedUser,
             staleTime: .minutes(5),
             retry: 3,
             reportOnError: .always,
@@ -520,7 +520,7 @@ struct SearchResultsView: View {
 struct Query<T: Sendable>: DynamicProperty {
     @State private var queryState: QueryState<T> = .idle
     @State private var hasAppeared = false
-    @Environment(\.scenePhase) private var scenePhase
+    @State private var hasInitialFetched = false
     
     private let key: any QueryKey
     private let fetch: @Sendable () async throws -> T
@@ -531,34 +531,33 @@ struct Query<T: Sendable>: DynamicProperty {
     }
     
     func update() {
-        handleAppearance()
-        handleScenePhaseChanges()
-        handleNetworkReconnection()
-    }
-    
-    private func handleAppearance() {
-        if !hasAppeared {
-            hasAppeared = true
-            if shouldRefetch(trigger: options.refetchOnAppear) {
-                executeQuery()
+        // Only execute initial query if refetchOnAppear is .never
+        // Otherwise, let the attach lifecycle handle it
+        if !hasInitialFetched {
+            hasInitialFetched = true
+            handleInitialSetup()
+            
+            if options.enabled && options.refetchOnAppear == .never {
+                executeQuery(isInitial: true)
             }
+            
+            setupNetworkMonitoring()
         }
     }
     
-    private func handleScenePhaseChanges() {
-        if scenePhase == .active {
-            if shouldRefetch(trigger: options.refetchOnSceneActive) {
-                executeQuery()
-            }
+    private func handleInitialSetup() {
+        // Set initial data if provided
+        if queryState.status == .idle, let initialData = initialData {
+            queryState.setSuccess(data: initialData)
         }
     }
     
-    private func handleNetworkReconnection() {
+    private func setupNetworkMonitoring() {
         // Listen for network reconnection notifications
         NotificationCenter.default.publisher(for: .networkReconnected)
             .sink { _ in
                 if shouldRefetch(trigger: options.refetchOnReconnect) {
-                    executeQuery()
+                    executeQuery(isInitial: false)
                 }
             }
     }
@@ -567,9 +566,27 @@ struct Query<T: Sendable>: DynamicProperty {
         switch trigger {
         case .never: return false
         case .always: return true
-        case .ifStale: return queryState.isStale
+        case .ifStale: return queryState.isStale || queryState.status == .idle
         case .when(let condition): return condition()
         }
+    }
+}
+
+// MARK: - ViewLifecycleAttachable Conformance
+extension Query: ViewLifecycleAttachable {
+    func onAppear() {
+        if !hasAppeared {
+            hasAppeared = true
+            
+            // Execute query based on refetchOnAppear setting
+            if options.enabled && shouldRefetch(trigger: options.refetchOnAppear) {
+                executeQuery(isInitial: queryState.status == .idle)
+            }
+        }
+    }
+    
+    func onDisappear() {
+        // Future: Cancel in-flight requests, pause intervals
     }
 }
 ```
@@ -599,9 +616,84 @@ struct QueryOptions {
 This provides:
 - Automatic refetching on view appear (equivalent to refetchOnMount)
 - Network reconnection detection and refetching
-- SwiftUI-specific scene lifecycle integration
 - Flexible trigger conditions (never, always, ifStale, custom)
 - Seamless integration with SwiftUI view lifecycle
+
+### Query Execution Logic Flow
+
+SwiftUI Query uses a smart execution strategy that depends on the `refetchOnAppear` setting to avoid duplicate fetches and provide predictable behavior:
+
+#### When `refetchOnAppear: .never`
+```swift
+@Query("config", fetch: fetchConfig, options: QueryOptions(refetchOnAppear: .never))
+var configQuery
+
+// Usage: .attach(configQuery) // Optional - no effect since .never
+```
+
+**Execution Flow:**
+1. ✅ `update()` method executes query immediately on view load
+2. ❌ `onAppear()` never triggers query (even with .attach())
+3. **Use case:** One-time configuration data that shouldn't refetch
+
+#### When `refetchOnAppear: .always` or `.ifStale`
+```swift
+@Query("posts", fetch: fetchPosts, options: QueryOptions(refetchOnAppear: .ifStale))
+var postsQuery
+
+// Usage: .attach(postsQuery) // Required for query to execute
+```
+
+**Execution Flow:**
+1. ❌ `update()` method does NOT execute query on view load
+2. ✅ `onAppear()` executes query when view appears (via .attach())
+3. ✅ Subsequent `onAppear()` calls may refetch based on staleness/settings
+4. **Use case:** Dynamic data that should refresh when view appears
+
+#### Comparison Table
+
+| `refetchOnAppear` | Initial Fetch in `update()` | Fetch in `onAppear()` | Requires `.attach()` |
+|-------------------|------------------------------|----------------------|---------------------|
+| `.never`          | ✅ Yes                      | ❌ Never             | ❌ No               |
+| `.always`         | ❌ No                       | ✅ Always            | ✅ Yes              |
+| `.ifStale`        | ❌ No                       | ✅ If stale          | ✅ Yes              |
+| `.when(condition)`| ❌ No                       | ✅ If condition true | ✅ Yes              |
+
+#### Best Practices
+
+**For static/configuration data:**
+```swift
+@Query("app-config", fetch: fetchConfig, options: QueryOptions(
+    refetchOnAppear: .never,
+    staleTime: .hours(24)
+))
+var configQuery
+// No .attach() needed - fetches once automatically
+```
+
+**For dynamic data:**
+```swift
+@Query("user-posts", fetch: fetchPosts, options: QueryOptions(
+    refetchOnAppear: .ifStale,
+    staleTime: .minutes(5)
+))
+var postsQuery
+
+// In view:
+.attach(postsQuery) // Required for execution
+```
+
+**For real-time data:**
+```swift
+@Query("notifications", fetch: fetchNotifications, options: QueryOptions(
+    refetchOnAppear: .always,
+    staleTime: .zero
+))
+var notificationsQuery
+
+// In view:
+.attach(notificationsQuery) // Always refetches on appear
+```
 
 ### Next Steps
 1. Define QueryOptions structure

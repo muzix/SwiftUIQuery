@@ -4,55 +4,34 @@ Get up and running with SwiftUI Query in minutes.
 
 ## Overview
 
-This guide will help you set up SwiftUI Query in your app and make your first query.
+SwiftUI Query brings TanStack Query's powerful data fetching patterns to SwiftUI. This guide shows you how to make your first query and understand the core concepts.
 
-## Step 1: Setup Query Client
+## Basic Query Example
 
-First, create a query client and provide it to your app:
-
-```swift
-import SwiftUI
-import SwiftUIQuery
-
-@main
-struct MyApp: App {
-    let queryClient = QueryClient()
-    
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(queryClient)
-        }
-    }
-}
-```
-
-## Step 2: Make Your First Query
-
-Use the `@Query` property wrapper to fetch data:
+Use the `@Query` property wrapper to fetch data declaratively:
 
 ```swift
 import SwiftUI
 import SwiftUIQuery
 
-struct Post: Codable, Identifiable {
+struct Post: Sendable, Codable, Identifiable {
     let id: Int
     let title: String
     let body: String
 }
 
-struct ContentView: View {
-    @Query("posts") var posts: QueryResult<[Post]>
+struct PostsView: View {
+    @Query("posts", fetch: fetchPosts)
+    var postsQuery
     
     var body: some View {
-        NavigationView {
-            Group {
-                switch posts.state {
-                case .loading:
-                    ProgressView()
-                case .success(let data):
-                    List(data) { post in
-                        VStack(alignment: .leading) {
+        NavigationStack {
+            VStack {
+                if postsQuery.isLoading {
+                    ProgressView("Loading posts...")
+                } else if let posts = postsQuery.data {
+                    List(posts) { post in
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(post.title)
                                 .font(.headline)
                             Text(post.body)
@@ -60,72 +39,205 @@ struct ContentView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                case .error(let error):
-                    Text("Error: \(error.localizedDescription)")
+                } else if let error = postsQuery.error {
+                    VStack {
+                        Text("Failed to load posts")
+                            .font(.headline)
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        Button("Retry") {
+                            _postsQuery.refetch()
+                        }
+                    }
                 }
             }
             .navigationTitle("Posts")
         }
+        .attach(_postsQuery) // Enable lifecycle-driven refetching
     }
-    
-    private func fetchPosts() async throws -> [Post] {
-        let url = URL(string: "https://jsonplaceholder.typicode.com/posts")!
-        let (data, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode([Post].self, from: data)
-    }
+}
+
+@Sendable
+func fetchPosts() async throws -> [Post] {
+    let url = URL(string: "https://jsonplaceholder.typicode.com/posts")!
+    let (data, _) = try await URLSession.shared.data(from: url)
+    return try JSONDecoder().decode([Post].self, from: data)
 }
 ```
 
-## Step 3: Add Mutations
+## Query Execution Patterns
 
-For data modifications, use the `@Mutation` property wrapper:
+SwiftUI Query supports two execution patterns based on your `refetchOnAppear` setting:
+
+### Pattern 1: Automatic Execution (Static Data)
+
+For data that should fetch once and not refetch on view appearances:
 
 ```swift
-struct CreatePostView: View {
-    @Mutation var createPost: MutationResult<Post>
-    @State private var title = ""
-    @State private var body = ""
+@Query(
+    "app-config", 
+    fetch: fetchConfig,
+    options: QueryOptions(refetchOnAppear: .never, staleTime: .hours(24))
+)
+var configQuery
+
+// Usage: No .attach() needed - fetches automatically when view loads
+```
+
+### Pattern 2: Lifecycle-Driven Execution (Dynamic Data)
+
+For data that should refetch when views appear (default behavior):
+
+```swift
+@Query(
+    "user-posts", 
+    fetch: fetchPosts,
+    options: QueryOptions(refetchOnAppear: .ifStale, staleTime: .minutes(5))
+)
+var postsQuery
+
+// Usage: Requires .attach() to enable lifecycle events
+.attach(_postsQuery)
+```
+
+## Query State Properties
+
+The query state provides comprehensive information about your request:
+
+```swift
+@Query("data", fetch: fetchData) var dataQuery
+
+// Status properties
+dataQuery.status        // .idle, .loading, .success, .error
+dataQuery.isLoading     // true during initial load
+dataQuery.isFetching    // true during any fetch (including background)
+dataQuery.isSuccess     // true when data loaded successfully
+dataQuery.isError       // true when an error occurred
+dataQuery.hasData       // true when data is available
+dataQuery.isStale       // true when data needs refreshing
+
+// Data and error
+dataQuery.data          // The fetched data (optional)
+dataQuery.error         // Any error that occurred (optional)
+```
+
+## Query Actions
+
+Control your queries programmatically:
+
+```swift
+// Manual refetch
+_dataQuery.refetch()
+
+// Mark data as stale (triggers refetch on next appear if .ifStale)
+_dataQuery.invalidate()
+
+// Reset to initial state
+_dataQuery.reset()
+```
+
+## Configuration Options
+
+Customize query behavior with `QueryOptions`:
+
+```swift
+@Query(
+    "posts", 
+    fetch: fetchPosts,
+    options: QueryOptions(
+        staleTime: .minutes(5),           // How long data stays fresh
+        refetchOnAppear: .ifStale,        // When to refetch on view appear
+        refetchOnReconnect: .ifStale,     // When to refetch on network reconnect
+        enabled: true,                    // Whether query should execute
+        retry: 3                          // Number of retry attempts
+    )
+)
+var postsQuery
+```
+
+## Common Patterns
+
+### Static Configuration Data
+```swift
+@Query("theme", fetch: fetchTheme, options: QueryOptions(refetchOnAppear: .never))
+var themeQuery
+// Fetches once when view loads, no .attach() needed
+```
+
+### Dynamic User Data
+```swift
+@Query("profile", fetch: fetchProfile, options: QueryOptions(refetchOnAppear: .ifStale))
+var profileQuery
+// Refetches if stale when view appears, requires .attach()
+```
+
+### Real-time Data
+```swift
+@Query("notifications", fetch: fetchNotifications, options: QueryOptions(
+    refetchOnAppear: .always,
+    staleTime: .zero
+))
+var notificationsQuery
+// Always refetches on view appear, requires .attach()
+```
+
+## Navigation Example
+
+Queries work seamlessly with SwiftUI navigation:
+
+```swift
+struct PostListView: View {
+    @Query("posts", fetch: fetchPosts) var postsQuery
     
     var body: some View {
-        NavigationView {
-            Form {
-                TextField("Title", text: $title)
-                TextField("Body", text: $body, axis: .vertical)
-                    .lineLimit(3...)
-                
-                Button("Create Post") {
-                    createPost.mutate(createNewPost)
+        NavigationStack {
+            List(postsQuery.data ?? []) { post in
+                NavigationLink(destination: PostDetailView(postId: post.id)) {
+                    Text(post.title)
                 }
-                .disabled(createPost.isLoading)
             }
-            .navigationTitle("New Post")
         }
+        .attach(_postsQuery)
+    }
+}
+
+struct PostDetailView: View {
+    let postId: Int
+    @Query var postQuery: QueryState<Post>
+    
+    init(postId: Int) {
+        self.postId = postId
+        self._postQuery = Query(
+            "post-\(postId)",
+            fetch: { try await fetchPost(id: postId) }
+        )
     }
     
-    private func createNewPost() async throws -> Post {
-        let url = URL(string: "https://jsonplaceholder.typicode.com/posts")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let postData = ["title": title, "body": body]
-        request.httpBody = try JSONSerialization.data(withJSONObject: postData)
-        
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return try JSONDecoder().decode(Post.self, from: data)
+    var body: some View {
+        VStack {
+            if let post = postQuery.data {
+                Text(post.title).font(.title)
+                Text(post.body)
+            } else if postQuery.isLoading {
+                ProgressView()
+            }
+        }
+        .attach(_postQuery)
     }
 }
 ```
 
-## Key Concepts
+## Key Benefits
 
-- **Query Keys**: Unique identifiers for your queries (e.g., `"posts"`, `["post", id]`)
-- **Query Functions**: Async functions that return your data
-- **Automatic Caching**: Data is cached automatically and reused across components
-- **Background Refetching**: Data is refetched when the app becomes active or network reconnects
+- **Automatic Caching**: Queries with the same key share cached data
+- **Background Refetching**: Data refreshes when app regains focus or network reconnects
+- **Optimistic UI**: Loading and error states are handled automatically
+- **Swift 6 Ready**: Full concurrency support with `@Sendable` functions
+- **SwiftUI Native**: Built specifically for SwiftUI using `@Observable` and `DynamicProperty`
 
 ## Next Steps
 
-- <doc:BasicUsage>
-- <doc:Queries>
-- <doc:Mutations>
+- <doc:Queries> - Deep dive into query configuration and patterns
+- <doc:QueryInvalidation> - Learn about cache invalidation strategies
+- <doc:Caching> - Understand caching behavior and stale time

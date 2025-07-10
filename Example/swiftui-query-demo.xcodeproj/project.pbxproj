@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9F064B422E1ED636007F58D5 /* swiftui-query in Frameworks */ = {isa = PBXBuildFile; productRef = 9F064B412E1ED636007F58D5 /* swiftui-query */; };
+		9F064B6F2E202D47007F58D5 /* SwiftUIQuery in Frameworks */ = {isa = PBXBuildFile; productRef = 9F064B6E2E202D47007F58D5 /* SwiftUIQuery */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9F064B422E1ED636007F58D5 /* swiftui-query in Frameworks */,
+				9F064B6F2E202D47007F58D5 /* SwiftUIQuery in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,14 +111,14 @@
 			buildRules = (
 			);
 			dependencies = (
-				9F064B442E1ED797007F58D5 /* PBXTargetDependency */,
+				9F064B712E202D54007F58D5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9F064B0A2E1ED55C007F58D5 /* swiftui-query-demo */,
 			);
 			name = "swiftui-query-demo";
 			packageProductDependencies = (
-				9F064B412E1ED636007F58D5 /* swiftui-query */,
+				9F064B6E2E202D47007F58D5 /* SwiftUIQuery */,
 			);
 			productName = "swiftui-query-demo";
 			productReference = 9F064B082E1ED55C007F58D5 /* swiftui-query-demo.app */;
@@ -203,7 +203,7 @@
 			mainGroup = 9F064AFF2E1ED55C007F58D5;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				9F064B402E1ED636007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */,
+				9F064B6D2E202D47007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9F064B092E1ED55C007F58D5 /* Products */;
@@ -276,9 +276,9 @@
 			target = 9F064B072E1ED55C007F58D5 /* swiftui-query-demo */;
 			targetProxy = 9F064B202E1ED55F007F58D5 /* PBXContainerItemProxy */;
 		};
-		9F064B442E1ED797007F58D5 /* PBXTargetDependency */ = {
+		9F064B712E202D54007F58D5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = 9F064B432E1ED797007F58D5 /* swiftui-query */;
+			productRef = 9F064B702E202D54007F58D5 /* SwiftUIQuery */;
 		};
 /* End PBXTargetDependency section */
 
@@ -421,7 +421,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16;
+				IPHONEOS_DEPLOYMENT_TARGET = 17;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -450,7 +450,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16;
+				IPHONEOS_DEPLOYMENT_TARGET = 17;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -578,21 +578,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		9F064B402E1ED636007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */ = {
+		9F064B6D2E202D47007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../../swiftui-query";
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		9F064B412E1ED636007F58D5 /* swiftui-query */ = {
+		9F064B6E2E202D47007F58D5 /* SwiftUIQuery */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = "swiftui-query";
+			productName = SwiftUIQuery;
 		};
-		9F064B432E1ED797007F58D5 /* swiftui-query */ = {
+		9F064B702E202D54007F58D5 /* SwiftUIQuery */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 9F064B402E1ED636007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */;
-			productName = "swiftui-query";
+			package = 9F064B6D2E202D47007F58D5 /* XCLocalSwiftPackageReference "../../swiftui-query" */;
+			productName = SwiftUIQuery;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

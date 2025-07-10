@@ -8,36 +8,61 @@
 import SwiftUI
 import SwiftUIQuery
 
+// MARK: - Main Demo View
+
 struct ContentView: View {
-
-//    @Query(
-//        key: [FetchUserQuery(userId: "userId")],
-//        fetch: {
-//            try await apiClient.fetch(FetchUserQuery(userId: "userId"))
-//        },
-//        staleTime: .minutes(5),
-//        retry: 3,
-//        select: { data in data.fragments.userFragment },
-//        placeholderData: { previousData in previousData },
-//        initialData: cachedUser,
-//        reportOnError: .always,
-//        refetchInterval: .seconds(30),
-//        refetchIntervalInBackground: .minutes(1)
-//        refetchOnAppears: .always
-//
-//
-//    )
-
+    
+    // Query for Pokemon list
+    @Query("pokemon-list", fetch: fetchPokemonList, options: QueryOptions(staleTime: .seconds(30)))
+    var pokemonListQuery
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-        .onAppear {
-            SwiftUIQuery.demo()
+        NavigationStack {
+            VStack(spacing: 20) {
+                // Header
+                VStack {
+                    Text("🔥")
+                        .font(.system(size: 50))
+                    Text("SwiftUI Query + PokeAPI")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Pokemon List Section
+                        GroupBox("Pokemon List Query Demo") {
+                            PokemonListView(listQuery: pokemonListQuery)
+                        }
+                        
+                        // Actions Section
+                        GroupBox("Query Actions") {
+                            VStack(spacing: 12) {
+                                Button("Refresh Pokemon List") {
+                                    _pokemonListQuery.refetch()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                
+                                Button("Reset Query") {
+                                    _pokemonListQuery.reset()
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button("Invalidate Query") {
+                                    _pokemonListQuery.invalidate()
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Pokemon Demo")
+            .navigationBarTitleDisplayMode(.inline)
+            .attach(_pokemonListQuery)  // Attach lifecycle events to the query
         }
     }
 }

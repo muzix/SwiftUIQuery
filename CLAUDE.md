@@ -95,6 +95,11 @@ swift test
 swift build -Xswiftc -strict-concurrency=complete
 ```
 
+**IMPORTANT: Do NOT attempt to build Xcode projects**
+- Never run `xcodebuild` commands on .xcodeproj files
+- The Example/ directory contains Xcode projects for manual testing only
+- Only use swift test and swift build commands for automated verification
+
 ## Important TanStack Query Defaults to Implement
 
 From the official documentation:

@@ -1,0 +1,66 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test SwiftUI Query
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "6.0"
+    
+    - name: Show Swift version
+      run: swift --version
+    
+    - name: Run Tests
+      run: |
+        swift test \
+          -Xswiftc -strict-concurrency=complete \
+          -Xswiftc -warn-concurrency \
+          --parallel
+    
+    - name: Run Tests with Coverage
+      run: |
+        swift test \
+          -Xswiftc -strict-concurrency=complete \
+          --enable-code-coverage
+    
+    - name: Generate Coverage Report
+      run: |
+        xcrun llvm-cov export \
+          .build/debug/swiftui-queryPackageTests.xctest/Contents/MacOS/swiftui-queryPackageTests \
+          -instr-profile=.build/debug/codecov/default.profdata \
+          -ignore-filename-regex=".build|Tests" \
+          -format="lcov" > coverage.lcov
+      continue-on-error: true
+    
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.lcov
+        fail_ci_if_error: false
+      continue-on-error: true
+
+  lint:
+    name: Swift Format
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Swift Format Lint
+      uses: norio-nomura/action-swiftlint@3.2.1
+      with:
+        args: --strict

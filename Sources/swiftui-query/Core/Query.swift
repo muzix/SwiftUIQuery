@@ -7,4 +7,12 @@
 
 import SwiftUI
 
-public struct Query: 
+// Placeholder Query struct for now
+public struct Query<T: Sendable> {
+    // This will be implemented in the next phase
+    // For now, just a basic structure to make tests compile
+    
+    public init() {
+        // Placeholder implementation
+    }
+}

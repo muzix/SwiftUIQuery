@@ -15,6 +15,14 @@ import SwiftUI
 public protocol QueryKey: Hashable, Sendable {
     /// A string representation of the query key for debugging and logging
     var stringValue: String { get }
+    
+    /// A hash key for cache storage
+    var hashKey: String { get }
+}
+
+extension QueryKey {
+    /// Default implementation uses the string value as hash key
+    public var hashKey: String { stringValue }
 }
 
 // MARK: - QueryKey Extensions

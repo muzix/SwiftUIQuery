@@ -14,7 +14,7 @@ struct PokemonDetailView: View {
     let pokemon: PokemonList.PokemonListItem
     
     // Query for individual Pokemon details
-    @Query var pokemonDetailQuery: QueryState<Pokemon>
+    @Query<Fetcher<Pokemon>> var pokemonDetailQuery: QueryState<Pokemon>
     
     init(pokemon: PokemonList.PokemonListItem) {
         self.pokemon = pokemon
@@ -22,7 +22,7 @@ struct PokemonDetailView: View {
             "pokemon-\(pokemon.pokemonId)",
             fetch: { try await fetchPokemon(id: pokemon.pokemonId) },
             options: QueryOptions(
-                staleTime: .seconds(300),  // 5 minutes
+                staleTime: .seconds(5),  // 5 minutes
                 refetchOnAppear: .ifStale
             )
         )

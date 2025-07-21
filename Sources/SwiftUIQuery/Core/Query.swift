@@ -13,19 +13,23 @@ import Combine
 /// A property wrapper for declarative data fetching in SwiftUI, inspired by TanStack Query.
 /// Provides automatic caching, background refetching, and state management.
 @propertyWrapper @MainActor
-public struct Query<T: Sendable>: DynamicProperty, ViewLifecycleAttachable {
+public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable where F.Output: Sendable {
+    
+    public typealias T = F.Output
     
     // MARK: - Internal State
     
     @State private var queryState = QueryState<T>()
-    @State private var hasInitialFetched = false
-    @State private var networkCancellable: AnyCancellable?
+    @State private var queryInstance: QueryInstance<T>?
+    @State private var hasSetupQuery = false
+    @State private var hasFetchedOnAppear = false
+    @Environment(\.queryClient) private var queryClient
     @Environment(\.reportError) private var reportError
     
     // MARK: - Configuration
     
     private let key: any QueryKey
-    private let fetch: @Sendable () async throws -> T
+    public let fetcher: F  // Make fetcher public and strongly typed
     private let options: QueryOptions
     
     // Data initialization
@@ -46,159 +50,107 @@ public struct Query<T: Sendable>: DynamicProperty, ViewLifecycleAttachable {
     
     // MARK: - Initialization
     
-    /// Initialize a Query with a key and fetch function
+    /// Initialize a Query with a key and fetcher object
+    /// - Parameters:
+    ///   - key: Unique identifier for this query
+    ///   - fetcher: Object conforming to FetchProtocol that can fetch data
+    ///   - placeholderData: Optional function to provide placeholder data
+    ///   - initialData: Optional initial data to use before first fetch
+    ///   - options: Query configuration options
+    public init(
+        _ key: any QueryKey,
+        fetcher: F,
+        placeholderData: (@Sendable (T?) -> T?)? = nil,
+        initialData: T? = nil,
+        options: QueryOptions = .default
+    ) {
+        self.key = key
+        self.fetcher = fetcher
+        self.placeholderData = placeholderData
+        self.initialData = initialData
+        self.options = options
+    }
+
+    /// Initialize a Query with a key and fetch function (backward compatibility)
     /// - Parameters:
     ///   - key: Unique identifier for this query
     ///   - fetch: Async function that returns the data
     ///   - placeholderData: Optional function to provide placeholder data
     ///   - initialData: Optional initial data to use before first fetch
     ///   - options: Query configuration options
-    public init(
-        key: any QueryKey,
+    public init<T: Sendable>(
+        _ key: any QueryKey,
         fetch: @Sendable @escaping () async throws -> T,
         placeholderData: (@Sendable (T?) -> T?)? = nil,
         initialData: T? = nil,
         options: QueryOptions = .default
-    ) {
+    ) where F.Output == T, F == Fetcher<T> {
         self.key = key
-        self.fetch = fetch
+        self.fetcher = Fetcher(fetch: fetch)
         self.placeholderData = placeholderData
         self.initialData = initialData
         self.options = options
     }
-    
-    /// Convenience initializer with string key
-    /// - Parameters:
-    ///   - stringKey: String-based query key
-    ///   - fetch: Async function that returns the data
-    ///   - placeholderData: Optional function to provide placeholder data
-    ///   - initialData: Optional initial data to use before first fetch
-    ///   - options: Query configuration options
-    public init(
-        _ stringKey: String,
-        fetch: @Sendable @escaping () async throws -> T,
-        placeholderData: (@Sendable (T?) -> T?)? = nil,
-        initialData: T? = nil,
-        options: QueryOptions = .default
-    ) {
-        self.init(
-            key: stringKey,
-            fetch: fetch,
-            placeholderData: placeholderData,
-            initialData: initialData,
-            options: options
-        )
-    }
-    
+
     // MARK: - DynamicProperty Implementation
     
     /// SwiftUI calls this method when the view updates
     nonisolated public func update() {
         Task { @MainActor in
-            // Perform initial setup and query on first call
-            if !hasInitialFetched {
-                hasInitialFetched = true
-                handleInitialSetup()
-                
-                // Only execute initial query if refetchOnAppear is .never
-                // Otherwise, let the attach lifecycle handle it
-                if options.enabled && options.refetchOnAppear == .never {
-                    executeQuery(isInitial: queryState.status == .idle)
-                }
-                
-                setupNetworkMonitoring()
+            // Setup query on first call
+            if !hasSetupQuery {
+                hasSetupQuery = true
+                setupQuery()
             }
         }
     }
     
-    // MARK: - Lifecycle Handling
+    // MARK: - Query Setup
     
-    private func handleInitialSetup() {
-        // Configure stale time for the query state
-        queryState.staleTime = options.staleTime
+    private func setupQuery() {
+        guard let client = queryClient else {
+            print("Warning: QueryClient not found in environment. Make sure to provide it using .queryClient(_:)")
+            return
+        }
         
-        // Set initial data if provided and no data exists
-        if queryState.status == .idle, let initialData = initialData {
+        // Create the fetch function from the fetcher
+        let fetchFunction: @Sendable () async throws -> T = { @MainActor in
+            try await fetcher.fetch()
+        }
+        
+        // Get or create query instance from client
+        let instance = client.getQuery(
+            key: key,
+            fetch: fetchFunction,
+            options: options
+        )
+        
+        self.queryInstance = instance
+        
+        // Assign the shared state to our @State property for SwiftUI tracking
+        self.queryState = instance.state
+        
+        // Set initial data if provided and state is still idle
+        if let initialData = initialData, queryState.status == .idle {
             queryState.setSuccess(data: initialData)
         }
-    }
-    
-    private func setupNetworkMonitoring() {
-        // Only set up network monitoring once
-        guard networkCancellable == nil else { return }
         
-        // Listen for network reconnection notifications
-        networkCancellable = NotificationCenter.default.publisher(for: .networkReconnected)
-            .sink { _ in
-                Task { @MainActor in
-                    self.handleNetworkReconnect()
-                }
+        // Set placeholder data if provided
+        if let placeholderData = placeholderData {
+            if let data = placeholderData(queryState.data) {
+                queryState.data = data
             }
-    }
-    
-    private func handleNetworkReconnect() {
-        guard options.enabled else { return }
-        if shouldRefetch(trigger: options.refetchOnReconnect) {
-            executeQuery(isInitial: false)
         }
-    }
-    
-    // MARK: - Query Execution
-    
-    private func executeQuery(isInitial: Bool) {
-        guard options.enabled else { return }
         
-        queryState.setLoading(isInitial: isInitial)
-        
-        Task {
-            await performQuery()
-        }
-    }
-    
-    private func performQuery() async {
-        do {
-            // Perform fetch off the main actor
-            let result = try await fetch()
-            
-            // Update state on main actor (we're already @MainActor isolated)
-            queryState.setSuccess(data: result)
-            
-        } catch {
-            // Update state on main actor (we're already @MainActor isolated)
-            queryState.setError(error)
-            
-            // Report error to environment if configured
-            if shouldReportError(error) {
-                reportError(error)
+        // If we should fetch and haven't fetched on appear yet, fetch immediately
+        if queryState.status == .idle && !hasFetchedOnAppear && shouldFetchOnAppears() {
+            hasFetchedOnAppear = true
+            Task {
+                await instance.fetch()
             }
         }
     }
     
-    // MARK: - Helper Methods
-    
-    private func shouldRefetch(trigger: RefetchTrigger) -> Bool {
-        switch trigger {
-        case .never:
-            return false
-        case .always:
-            return true
-        case .ifStale:
-            return queryState.isStale || queryState.status == .idle
-        case .when(let condition):
-            return condition()
-        }
-    }
-    
-    private func shouldReportError(_ error: Error) -> Bool {
-        switch options.reportOnError {
-        case .never:
-            return false
-        case .always:
-            return true
-        case .when(let condition):
-            return condition(error)
-        }
-    }
 }
 
 // MARK: - Query Actions
@@ -206,17 +158,28 @@ public struct Query<T: Sendable>: DynamicProperty, ViewLifecycleAttachable {
 extension Query {
     /// Manually refetch the query
     public func refetch() {
-        executeQuery(isInitial: false)
+        Task {
+            await queryInstance?.fetch()
+        }
+    }
+    
+    /// Manually refetch the query with fetcher configuration
+    /// - Parameter configure: Configuration closure to modify the fetcher before refetching
+    public func refetch(configure: @MainActor @escaping (F) -> Void) {
+        Task { @MainActor in
+            configure(fetcher)
+            await queryInstance?.fetch()
+        }
     }
     
     /// Mark the query data as stale
     public func invalidate() {
-        queryState.markStale()
+        queryInstance?.invalidate()
     }
     
     /// Reset the query to its initial state
     public func reset() {
-        queryState.reset()
+        queryInstance?.reset()
     }
 }
 
@@ -225,15 +188,45 @@ extension Query {
 extension Query {
     /// Called when the view appears
     public func onAppear() {
-        // Only refetch on appear if configured to do so
-        if options.enabled && shouldRefetch(trigger: options.refetchOnAppear) {
-            executeQuery(isInitial: queryState.status == .idle)
+        guard let instance = queryInstance else { return }
+        
+        // Mark query as active
+        instance.markActive()
+        
+        // Decide if we should fetch on mount (only if haven't fetched yet)
+        if !hasFetchedOnAppear && shouldFetchOnAppears() {
+            hasFetchedOnAppear = true
+            Task {
+                await instance.fetch()
+            }
         }
     }
     
     /// Called when the view disappears
     public func onDisappear() {
-        // Currently no action needed on disappear
-        // In the future, this could cancel in-flight requests or pause intervals
+        guard let instance = queryInstance else { return }
+        
+        // Mark query as inactive
+        instance.markInactive()
+        
+        // Reset the fetch flag so it can fetch again on next appear
+        hasFetchedOnAppear = false
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func shouldFetchOnAppears() -> Bool {
+        guard options.enabled else { return false }
+        
+        switch options.refetchOnAppear {
+        case .never:
+            return queryState.status == .idle
+        case .always:
+            return true
+        case .ifStale:
+            return queryState.isStale || queryState.status == .idle
+        case .when(let condition):
+            return condition()
+        }
     }
 }

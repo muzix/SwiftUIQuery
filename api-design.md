@@ -181,7 +181,7 @@ struct GetDefaultLivestreamThumbnailUrlQuery: QueryKey {
 
 ### Query API
 
-```
+```swift
 // Query state access
 userQuery.status      // .idle, .loading, .success, .error
 userQuery.data        // T?
@@ -193,8 +193,254 @@ userQuery.isFetching  // Bool (background refetch)
 userQuery.isStale     // Bool
 
 // Query actions
-await userQuery.refetch()
-userQuery.invalidate()
+_userQuery.refetch()                    // Basic refetch
+_userQuery.refetch { fetcher in         // ✨ NEW: Configure fetcher before refetch
+    fetcher.searchTerm = "new value"    // Update dynamic properties
+    fetcher.options = newOptions        // Modify fetcher configuration
+}
+_userQuery.invalidate()                 // Mark as stale
+_userQuery.reset()                      // Reset to initial state
+```
+
+### FetchProtocol Architecture
+
+SwiftUI Query now supports both closure-based and protocol-based fetching for maximum flexibility and dynamic input handling.
+
+#### FetchProtocol Definition
+```swift
+@MainActor
+public protocol FetchProtocol: AnyObject, Sendable {
+    associatedtype Output: Sendable
+    func fetch() async throws -> Output
+}
+```
+
+#### Dynamic Input with FetchProtocol
+Unlike closures, FetchProtocol objects can access dynamic properties at fetch time:
+
+```swift
+@MainActor
+public final class PokemonSearchFetcher: ObservableObject, FetchProtocol {
+    @Published public var searchTerm: String = ""
+    @Published public var includeVariants: Bool = true
+    
+    public init(searchTerm: String = "") {
+        self.searchTerm = searchTerm
+    }
+    
+    public func fetch() async throws -> Pokemon {
+        // Uses current searchTerm value (dynamic!)
+        let cleanTerm = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTerm.isEmpty else {
+            throw SearchError.emptyTerm
+        }
+        
+        let url = URL(string: "https://pokeapi.co/api/v2/pokemon/\(cleanTerm)")!
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(Pokemon.self, from: data)
+    }
+}
+```
+
+#### Usage Examples
+```swift
+struct SearchView: View {
+    @State private var searchText = ""
+    @StateObject private var fetcher = PokemonSearchFetcher()
+    
+    // Generic Query with FetchProtocol
+    @Query<PokemonSearchFetcher> var searchQuery: QueryState<Pokemon>
+    
+    init() {
+        self._searchQuery = Query(
+            "pokemon-search",
+            fetcher: fetcher,
+            options: QueryOptions(staleTime: .seconds(30))
+        )
+    }
+    
+    var body: some View {
+        VStack {
+            TextField("Search Pokemon", text: $searchText)
+                .onChange(of: searchText) { _, newValue in
+                    fetcher.searchTerm = newValue
+                }
+            
+            // NEW: Configure and refetch in one step
+            Button("Search Pikachu") {
+                _searchQuery.refetch { $0.searchTerm = "pikachu" }
+            }
+            
+            Button("Search Charizard") {
+                _searchQuery.refetch { $0.searchTerm = "charizard" }
+            }
+        }
+        .attach(_searchQuery)
+    }
+}
+```
+
+#### Backward Compatibility
+The closure-based API is still supported through automatic wrapping:
+
+```swift
+// Old way (still works)
+@Query("user-\(userId)", fetch: {
+    try await api.getUser(userId) // ⚠️ Captures static userId
+}) var userQuery
+
+// New way (dynamic)
+@StateObject private var userFetcher = UserFetcher(userId: userId)
+@Query("user-profile", fetcher: userFetcher) var userQuery
+// ✅ userFetcher.userId can change dynamically
+```
+
+#### Generic Query Structure
+```swift
+@propertyWrapper @MainActor
+public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
+where F.Output: Sendable {
+    
+    public typealias T = F.Output
+    public let fetcher: F  // Strongly typed fetcher
+    
+    // Initialization with FetchProtocol object
+    public init(
+        _ key: any QueryKey,
+        fetcher: F,
+        placeholderData: (@Sendable (T?) -> T?)? = nil,
+        initialData: T? = nil,
+        options: QueryOptions = .default
+    )
+    
+    // Backward compatibility with closures
+    public init<T: Sendable>(
+        _ key: any QueryKey,
+        fetch: @Sendable @escaping () async throws -> T,
+        // ... other parameters
+    ) where F.Output == T, F == Fetcher<T>
+}
+```
+
+#### Benefits of FetchProtocol
+1. **Dynamic Input**: Properties can change between fetches
+2. **Type Safety**: Generic constraints ensure compile-time correctness
+3. **Configurability**: Use `refetch { fetcher in ... }` to modify before fetching
+4. **Testability**: Easy to mock FetchProtocol implementations
+5. **Reusability**: Fetcher objects can be shared across queries
+6. **Backward Compatibility**: Existing closure-based code continues to work
+
+### Current Architecture Overview
+
+SwiftUI Query follows TanStack Query's architecture with three main components:
+
+#### 1. QueryClient - Central Management
+```swift
+@MainActor
+public final class QueryClient: ObservableObject {
+    private let queryCache: QueryCache
+    public var defaultOptions: QueryOptions
+    
+    // Query lifecycle management
+    public func invalidateQueries(filter: QueryFilter? = nil, refetchType: RefetchType = .active) async
+    public func refetchQueries(filter: QueryFilter? = nil) async
+    public func resetQueries(filter: QueryFilter? = nil)
+    public func removeQueries(filter: QueryFilter? = nil)
+    public func clear()
+    
+    // Data access
+    public func setQueryData<T: Sendable>(key: any QueryKey, updater: @Sendable (T?) -> T?)
+    public func getQueryData<T: Sendable>(key: any QueryKey) -> T?
+}
+```
+
+#### 2. QueryCache - Storage and Retrieval
+```swift
+@MainActor
+internal final class QueryCache {
+    private var queries: [String: WeakQueryInstance] = [:]
+    
+    // Query management
+    func getOrCreateQuery<T: Sendable>(...) -> QueryInstance<T>
+    func findAll(filter: QueryFilter?) -> [AnyQueryInstance]
+    func removeQueries(filter: QueryFilter?)
+    func clear()
+}
+```
+
+#### 3. QueryInstance - Individual Query State
+```swift
+@MainActor
+internal final class QueryInstance<T: Sendable>: AnyQueryInstance, @unchecked Sendable {
+    let state = QueryState<T>()  // @Observable for SwiftUI
+    var isActive = false         // Active/inactive tracking
+    
+    // Query operations
+    func fetch() async
+    func invalidate()
+    func reset()
+    func markActive() / markInactive()
+}
+```
+
+#### Active/Inactive State Tracking
+Unlike React Query's observer pattern, SwiftUI Query uses simple active/inactive tracking:
+
+```swift
+extension Query {
+    public func onAppear() {
+        queryInstance?.markActive()
+        // Fetch if needed
+    }
+    
+    public func onDisappear() {
+        queryInstance?.markInactive()
+    }
+}
+```
+
+#### QueryClient Environment Integration
+```swift
+extension EnvironmentValues {
+    public var queryClient: QueryClient? {
+        get { self[QueryClientKey.self] }
+        set { self[QueryClientKey.self] = newValue }
+    }
+}
+
+extension View {
+    public func queryClient(_ queryClient: QueryClient) -> some View {
+        environment(\.queryClient, queryClient)
+    }
+}
+
+// Usage
+struct App: View {
+    let queryClient = QueryClient()
+    
+    var body: some View {
+        ContentView()
+            .queryClient(queryClient)
+    }
+}
+```
+
+#### Memory Management with Weak References
+```swift
+internal struct WeakQueryInstance {
+    weak var query: AnyQueryInstance?
+    
+    init(_ query: AnyQueryInstance) {
+        self.query = query
+    }
+}
+
+// QueryCache automatically cleans up nil references
+private func cleanupNilReferences() {
+    queries = queries.compactMapValues { weakQuery in
+        weakQuery.query != nil ? weakQuery : nil
+    }
+}
 ```
 
 ### Error Handling with throwOnError

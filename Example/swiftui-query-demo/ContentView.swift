@@ -16,6 +16,8 @@ struct ContentView: View {
     @Query("pokemon-list", fetch: fetchPokemonList, options: QueryOptions(staleTime: .seconds(5)))
     var pokemonListQuery
     
+    @Environment(\.queryClient) private var queryClient
+    
     // Timer to refresh UI for real-time stale status updates
     @State private var refreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var refreshTrigger = false
@@ -49,18 +51,51 @@ struct ContentView: View {
                     EmptyView().hidden()
                 }
                 // Header
-                VStack {
+                VStack(spacing: 12) {
                     Text("🔥")
                         .font(.system(size: 50))
                     Text("SwiftUI Query + PokeAPI")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .multilineTextAlignment(.center)
+                    
+                    Text("✨ New: Simplified Architecture with Active/Inactive Tracking!")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .fontWeight(.medium)
+                        .multilineTextAlignment(.center)
                 }
                 .padding()
                 
                 ScrollView {
                     VStack(spacing: 24) {
+                        // Navigation to QueryClient Demos
+                        GroupBox("🎯 NEW: QueryClient Demos") {
+                            VStack(spacing: 12) {
+                                Text("Explore advanced QueryClient features")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                
+                                VStack(spacing: 8) {
+                                    NavigationLink("✨ FetchProtocol Search Demo") {
+                                        FetcherSearchDemoView()
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    
+                                    NavigationLink("Multi-Query Demo") {
+                                        MultiQueryDemoView()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    
+                                    NavigationLink("Active/Inactive Tracking") {
+                                        QueryClientDemoView()
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                            }
+                        }
+                        
                         // Pokemon List Section
                         GroupBox("Pokemon List Query Demo") {
                             PokemonListView(listQuery: pokemonListQuery)
@@ -105,15 +140,31 @@ struct ContentView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 
-                                Button("Reset Query") {
-                                    _pokemonListQuery.reset()
+                                HStack(spacing: 12) {
+                                    Button("Reset Query") {
+                                        _pokemonListQuery.reset()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    
+                                    Button("Invalidate Query") {
+                                        _pokemonListQuery.invalidate()
+                                    }
+                                    .buttonStyle(.bordered)
                                 }
-                                .buttonStyle(.bordered)
                                 
-                                Button("Invalidate Query") {
-                                    _pokemonListQuery.invalidate()
+                                Divider()
+                                
+                                Text("Global QueryClient Actions")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Button("Invalidate All Queries") {
+                                    Task {
+                                        await queryClient?.invalidateQueries()
+                                    }
                                 }
                                 .buttonStyle(.bordered)
+                                .foregroundColor(.orange)
                             }
                         }
                     }

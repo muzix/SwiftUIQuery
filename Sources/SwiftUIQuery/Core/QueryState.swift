@@ -45,6 +45,9 @@ public final class QueryState<T: Sendable> {
     /// The stale time duration for this query
     internal var staleTime: Duration = .zero
     
+    /// Whether the query has been explicitly invalidated
+    public var isInvalidated: Bool = false
+    
     // MARK: - Timestamps
     
     /// When the data was last successfully updated
@@ -85,6 +88,9 @@ public final class QueryState<T: Sendable> {
     
     /// Whether the data is considered stale and should be refetched
     public var isStale: Bool {
+        // If invalidated, always stale
+        if isInvalidated { return true }
+        
         // No data is always stale
         guard let dataUpdatedAt = dataUpdatedAt else { return true }
         
@@ -123,6 +129,7 @@ public final class QueryState<T: Sendable> {
         self.error = nil
         self.isFetching = false
         self.isInitialLoading = false
+        self.isInvalidated = false  // Clear invalidation on successful fetch
         self.dataUpdatedAt = Date()
         self.lastFetchedAt = Date()
     }
@@ -142,6 +149,11 @@ public final class QueryState<T: Sendable> {
         dataUpdatedAt = nil
     }
     
+    /// Mark the query as invalidated
+    public func markInvalidated() {
+        isInvalidated = true
+    }
+    
     /// Reset the query to idle state
     public func reset() {
         status = .idle
@@ -149,6 +161,7 @@ public final class QueryState<T: Sendable> {
         error = nil
         isFetching = false
         isInitialLoading = false
+        isInvalidated = false
         dataUpdatedAt = nil
         errorUpdatedAt = nil
         lastFetchedAt = nil

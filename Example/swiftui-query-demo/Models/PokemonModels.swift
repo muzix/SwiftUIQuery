@@ -27,34 +27,34 @@ struct PokemonList: Sendable, Codable {
 
 // MARK: - Pokemon Detail Model
 
-struct Pokemon: Sendable, Codable, Identifiable {
-    let id: Int
-    let name: String
-    let height: Int
-    let weight: Int
-    let sprites: Sprites
-    let types: [PokemonType]
-    let stats: [Stat]
-    
-    struct Sprites: Sendable, Codable {
-        let front_default: String?
-        let front_shiny: String?
+public struct Pokemon: Sendable, Codable, Identifiable {
+    public let id: Int
+    public let name: String
+    public let height: Int
+    public let weight: Int
+    public let sprites: Sprites
+    public let types: [PokemonType]
+    public let stats: [Stat]
+
+    public struct Sprites: Sendable, Codable {
+        public let front_default: String?
+        public let front_shiny: String?
     }
     
-    struct PokemonType: Sendable, Codable {
-        let type: TypeInfo
-        
-        struct TypeInfo: Sendable, Codable {
-            let name: String
+    public struct PokemonType: Sendable, Codable {
+        public let type: TypeInfo
+
+        public struct TypeInfo: Sendable, Codable {
+            public let name: String
         }
     }
     
-    struct Stat: Sendable, Codable {
-        let base_stat: Int
-        let stat: StatInfo
-        
-        struct StatInfo: Sendable, Codable {
-            let name: String
+    public struct Stat: Sendable, Codable {
+        public let base_stat: Int
+        public let stat: StatInfo
+
+        public struct StatInfo: Sendable, Codable {
+            public let name: String
         }
     }
 }

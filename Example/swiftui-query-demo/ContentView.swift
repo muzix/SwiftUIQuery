@@ -21,6 +21,18 @@ struct ContentView: View {
     // Timer to refresh UI for real-time stale status updates
     @State private var refreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var refreshTrigger = false
+    @State private var showingCacheViewer = false
+    @State private var navigationPath = NavigationPath()
+    
+    // MARK: - Navigation Methods
+    
+    private func navigate(to destination: NavigationDestination) {
+        navigationPath.append(destination)
+    }
+    
+    private func popToRoot() {
+        navigationPath.removeLast(navigationPath.count)
+    }
     
     // MARK: - Computed Properties
     
@@ -43,7 +55,7 @@ struct ContentView: View {
     }
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 20) {
                 if refreshTrigger {
                     EmptyView().hidden()
@@ -59,7 +71,7 @@ struct ContentView: View {
                         .fontWeight(.semibold)
                         .multilineTextAlignment(.center)
                     
-                    Text("✨ New: Simplified Architecture with Active/Inactive Tracking!")
+                    Text("✨ New: Error Boundaries & Configurable Refetch API!")
                         .font(.caption)
                         .foregroundColor(.blue)
                         .fontWeight(.medium)
@@ -78,18 +90,24 @@ struct ContentView: View {
                                     .multilineTextAlignment(.center)
                                 
                                 VStack(spacing: 8) {
-                                    NavigationLink("✨ FetchProtocol Search Demo") {
-                                        FetcherSearchDemoView()
+                                    Button("✨ FetchProtocol Search Demo") {
+                                        navigate(to: .fetcherSearchDemo)
                                     }
                                     .buttonStyle(.borderedProminent)
                                     
-                                    NavigationLink("Multi-Query Demo") {
-                                        MultiQueryDemoView()
+                                    Button("🛡️ Error Boundary Demo") {
+                                        navigate(to: .errorBoundaryDemo)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.red)
+                                    
+                                    Button("Multi-Query Demo") {
+                                        navigate(to: .multiQueryDemo)
                                     }
                                     .buttonStyle(.bordered)
                                     
-                                    NavigationLink("Active/Inactive Tracking") {
-                                        QueryClientDemoView()
+                                    Button("Active/Inactive Tracking") {
+                                        navigate(to: .queryClientDemo)
                                     }
                                     .buttonStyle(.bordered)
                                 }
@@ -98,7 +116,7 @@ struct ContentView: View {
                         
                         // Pokemon List Section
                         GroupBox("Pokemon List Query Demo") {
-                            PokemonListView(listQuery: pokemonListQuery)
+                            PokemonListView(listQuery: pokemonListQuery, navigationPath: $navigationPath)
                         }
                         
                         // Query Status Section
@@ -173,10 +191,51 @@ struct ContentView: View {
             }
             .navigationTitle("Pokemon Demo")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !navigationPath.isEmpty {
+                        Button {
+                            navigationPath.removeLast()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Back")
+                            }
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingCacheViewer = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle")
+                    }
+                    .accessibilityLabel("Query Cache Inspector")
+                    .help("View all queries in the cache")
+                }
+            }
+            .sheet(isPresented: $showingCacheViewer) {
+                QueryCacheViewer()
+            }
             .attach(_pokemonListQuery)  // Attach lifecycle events to the query
             .onReceive(refreshTimer) { _ in
                 // Toggle refresh trigger to force UI update for stale status
                 refreshTrigger.toggle()
+            }
+            .navigationDestination(for: NavigationDestination.self) { destination in
+                switch destination {
+                case .fetcherSearchDemo:
+                    FetcherSearchDemoView()
+                case .errorBoundaryDemo:
+                    ErrorBoundaryDemoView()
+                case .multiQueryDemo:
+                    MultiQueryDemoView()
+                case .queryClientDemo:
+                    QueryClientDemoView()
+                case .pokemonDetail(let pokemon):
+                    PokemonDetailView(pokemon: pokemon)
+                }
             }
         }
     }

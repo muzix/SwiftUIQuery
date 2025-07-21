@@ -10,6 +10,7 @@ import SwiftUIQuery
 
 struct MultiQueryDemoView: View {
     @Environment(\.queryClient) private var queryClient
+    @State private var showingCacheViewer = false
     
     var body: some View {
         ScrollView {
@@ -22,6 +23,19 @@ struct MultiQueryDemoView: View {
         }
         .navigationTitle("Multi-Query Demo")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingCacheViewer = true
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                }
+                .accessibilityLabel("Query Cache Inspector")
+            }
+        }
+        .sheet(isPresented: $showingCacheViewer) {
+            QueryCacheViewer()
+        }
     }
     
     // MARK: - Header

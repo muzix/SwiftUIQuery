@@ -34,12 +34,14 @@ public final class QueryClient: ObservableObject {
     internal func getQuery<T: Sendable>(
         key: any QueryKey,
         fetch: @Sendable @escaping () async throws -> T,
-        options: QueryOptions
+        options: QueryOptions,
+        reportError: (@MainActor @Sendable (Error) -> Void)? = nil
     ) -> QueryInstance<T> {
         queryCache.getOrCreateQuery(
             key: key,
             fetch: fetch,
-            options: mergeOptions(options)
+            options: mergeOptions(options),
+            reportError: reportError
         )
     }
     
@@ -140,6 +142,11 @@ public final class QueryClient: ObservableObject {
     /// Clear the entire cache
     public func clear() {
         queryCache.clear()
+    }
+    
+    /// Get all queries in the cache
+    public func getAllQueries() -> [AnyQueryInstance] {
+        queryCache.findAll(filter: nil)
     }
     
     // MARK: - Private Methods

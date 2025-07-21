@@ -53,16 +53,22 @@ public struct ErrorBoundary: ViewModifier {
     }
     
     public func body(content: Content) -> some View {
-        if let error = error {
-            errorView(error) {
-                self.error = nil
-                resetAction()
-            }
-        } else {
+        ZStack {
+            // Always keep the content active (but hide it when showing error)
             content
+                .opacity(error == nil ? 1 : 0)
                 .environment(\.reportError, ReportErrorAction { @MainActor error in
                     self.error = error
                 })
+            
+            // Show error view on top when there's an error
+            if let error = error {
+                errorView(error) {
+                    self.error = nil
+                    resetAction()
+                }
+                .transition(.opacity)
+            }
         }
     }
 }

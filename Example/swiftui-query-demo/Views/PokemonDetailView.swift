@@ -12,6 +12,7 @@ import SwiftUIQuery
 
 struct PokemonDetailView: View {
     let pokemon: PokemonList.PokemonListItem
+    @State private var showingCacheViewer = false
     
     // Query for individual Pokemon details
     @Query<Fetcher<Pokemon>> var pokemonDetailQuery: QueryState<Pokemon>
@@ -37,6 +38,19 @@ struct PokemonDetailView: View {
         }
         .navigationTitle(pokemon.name.capitalized)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingCacheViewer = true
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                }
+                .accessibilityLabel("Query Cache Inspector")
+            }
+        }
+        .sheet(isPresented: $showingCacheViewer) {
+            QueryCacheViewer()
+        }
         .attach(_pokemonDetailQuery)
     }
     

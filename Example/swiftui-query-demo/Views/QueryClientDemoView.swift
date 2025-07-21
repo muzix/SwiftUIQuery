@@ -11,6 +11,7 @@ import SwiftUIQuery
 struct QueryClientDemoView: View {
     @Environment(\.queryClient) private var queryClient
     @State private var refreshTrigger = false
+    @State private var showingCacheViewer = false
     
     var body: some View {
         NavigationStack {
@@ -24,6 +25,19 @@ struct QueryClientDemoView: View {
             }
             .navigationTitle("QueryClient Demo")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingCacheViewer = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle")
+                    }
+                    .accessibilityLabel("Query Cache Inspector")
+                }
+            }
+            .sheet(isPresented: $showingCacheViewer) {
+                QueryCacheViewer()
+            }
         }
     }
     

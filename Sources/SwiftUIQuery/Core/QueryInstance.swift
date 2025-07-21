@@ -34,18 +34,23 @@ final class QueryInstance<T: Sendable>: @unchecked Sendable {
     /// Reference to the cache (weak to avoid retain cycle)
     private weak var cache: QueryCache?
     
-    // MARK: - Initialization
+    /// Error reporting function from environment
+    private var reportError: (@MainActor @Sendable (Error) -> Void)?
     
+    // MARK: - Initialization
+
     init(
         key: any QueryKey,
         fetch: @Sendable @escaping () async throws -> T,
         options: QueryOptions,
-        cache: QueryCache
+        cache: QueryCache,
+        reportError: (@MainActor @Sendable (Error) -> Void)? = nil
     ) {
         self.key = key
         self.fetchFn = fetch
         self.options = options
         self.cache = cache
+        self.reportError = reportError
         self.state.staleTime = options.staleTime
     }
     
@@ -104,7 +109,17 @@ final class QueryInstance<T: Sendable>: @unchecked Sendable {
             } catch {
                 // Update state on error
                 guard !Task.isCancelled else { return }
+                
+                // Always update the query state first
                 state.setError(error)
+                
+                // Then check if error should also be reported to error boundary
+                let shouldReport = shouldReportError(error)
+                
+                if shouldReport, let reportError = reportError {
+                    // Report to error boundary (in addition to state update)
+                    reportError(error)
+                }
             }
         }
         
@@ -125,6 +140,23 @@ final class QueryInstance<T: Sendable>: @unchecked Sendable {
     }
     
     // MARK: - Private Methods
+    
+    /// Determine if error should be reported to error boundary based on options
+    private func shouldReportError(_ error: Error) -> Bool {
+        switch options.reportOnError {
+        case .never:
+            return false
+        case .always:
+            return true
+        case .when(let condition):
+            return condition(error)
+        }
+    }
+    
+    /// Update the error reporting function (called when Query updates)
+    func updateReportError(_ reportError: (@MainActor @Sendable (Error) -> Void)?) {
+        self.reportError = reportError
+    }
     
     deinit {
         // Cancel any in-flight requests when deallocated

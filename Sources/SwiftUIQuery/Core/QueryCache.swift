@@ -14,7 +14,7 @@ final class QueryCache {
     // MARK: - Properties
     
     /// All cached queries, keyed by their hash (weak references)
-    private var queries: [String: WeakQueryInstance] = [:]
+    private var queries: [String: AnyQueryInstance] = [:]
     
     // MARK: - Query Management
     
@@ -22,7 +22,8 @@ final class QueryCache {
     func getOrCreateQuery<T: Sendable>(
         key: any QueryKey,
         fetch: @Sendable @escaping () async throws -> T,
-        options: QueryOptions
+        options: QueryOptions,
+        reportError: (@MainActor @Sendable (Error) -> Void)? = nil
     ) -> QueryInstance<T> {
         let hashKey = key.hashKey
         
@@ -30,8 +31,10 @@ final class QueryCache {
         cleanupNilReferences()
         
         // Check if query already exists
-        if let weakQuery = queries[hashKey],
-           let existingQuery = weakQuery.instance as? QueryInstance<T> {
+        if let anyQuery = queries[hashKey],
+           let existingQuery = anyQuery.instance as? QueryInstance<T> {
+            // Update the report error function for existing query
+            existingQuery.updateReportError(reportError)
             return existingQuery
         }
         
@@ -40,11 +43,12 @@ final class QueryCache {
             key: key,
             fetch: fetch,
             options: options,
-            cache: self
+            cache: self,
+            reportError: reportError
         )
         
-        // Store weak reference in cache
-        queries[hashKey] = WeakQueryInstance(query)
+        // Store AnyQueryInstance in cache
+        queries[hashKey] = AnyQueryInstance(query, key: key)
         
         return query
     }
@@ -57,8 +61,8 @@ final class QueryCache {
     
     /// Clean up nil weak references
     private func cleanupNilReferences() {
-        queries = queries.compactMapValues { weakQuery in
-            weakQuery.instance != nil ? weakQuery : nil
+        queries = queries.compactMapValues { anyQuery in
+            anyQuery.instance != nil ? anyQuery : nil
         }
     }
     
@@ -67,9 +71,8 @@ final class QueryCache {
         // Clean up nil references first
         cleanupNilReferences()
         
-        let validQueries = queries.compactMap { (_, weakQuery) -> AnyQueryInstance? in
-            guard weakQuery.instance != nil else { return nil }
-            return weakQuery.anyQuery
+        let validQueries = queries.compactMap { (_, anyQuery) -> AnyQueryInstance? in
+            return anyQuery.instance != nil ? anyQuery : nil
         }
         
         guard let filter = filter else {
@@ -110,8 +113,8 @@ final class QueryCache {
     func setQueryData<T: Sendable>(key: any QueryKey, updater: @Sendable (T?) -> T?) {
         let hashKey = key.hashKey
         
-        if let weakQuery = queries[hashKey],
-           let typedQuery = weakQuery.instance as? QueryInstance<T> {
+        if let anyQuery = queries[hashKey],
+           let typedQuery = anyQuery.instance as? QueryInstance<T> {
             typedQuery.setData(updater: updater)
         }
     }
@@ -120,8 +123,8 @@ final class QueryCache {
     func getQueryData<T: Sendable>(key: any QueryKey) -> T? {
         let hashKey = key.hashKey
         
-        if let weakQuery = queries[hashKey],
-           let typedQuery = weakQuery.instance as? QueryInstance<T> {
+        if let anyQuery = queries[hashKey],
+           let typedQuery = anyQuery.instance as? QueryInstance<T> {
             return typedQuery.getData()
         }
         
@@ -131,34 +134,32 @@ final class QueryCache {
 
 // MARK: - Type Erasure
 
-/// Weak reference wrapper for query instances
-@MainActor
-struct WeakQueryInstance {
-    let anyQuery: AnyQueryInstance
-    weak var instance: AnyObject?
-    
-    init<T: Sendable>(_ query: QueryInstance<T>) {
-        self.anyQuery = AnyQueryInstance(query, key: query.key)
-        self.instance = query
-    }
-}
-
 /// Type-erased wrapper for query instances
 @MainActor
-struct AnyQueryInstance {
-    let instance: Any
-    let key: any QueryKey
-    let invalidate: @MainActor () -> Void
-    let fetch: @MainActor () async -> Void
-    let reset: @MainActor () -> Void
-    let isActive: @MainActor () -> Bool
+public class AnyQueryInstance {
+    weak var instance: AnyObject?
+    public let key: any QueryKey
+    public let invalidate: @MainActor () -> Void
+    public let fetch: @MainActor () async -> Void
+    public let reset: @MainActor () -> Void
+    public let isActive: @MainActor () -> Bool
+    public let getStatus: @MainActor () -> QueryStatus
+    public let isStale: @MainActor () -> Bool
+    public let isFetching: @MainActor () -> Bool
+    public let dataUpdatedAt: @MainActor () -> Date?
+    public let hasData: @MainActor () -> Bool
     
     init<T: Sendable>(_ query: QueryInstance<T>, key: any QueryKey) {
         self.instance = query
         self.key = key
-        self.invalidate = { query.invalidate() }
-        self.fetch = { await query.fetch() }
-        self.reset = { query.reset() }
-        self.isActive = { query.isActive }
+        self.invalidate = { [weak query] in query?.invalidate() }
+        self.fetch = { [weak query] in await query?.fetch() }
+        self.reset = { [weak query] in query?.reset() }
+        self.isActive = { [weak query] in query?.isActive ?? false }
+        self.getStatus = { [weak query] in query?.state.status ?? .idle }
+        self.isStale = { [weak query] in query?.state.isStale ?? false }
+        self.isFetching = { [weak query] in query?.state.isFetching ?? false }
+        self.dataUpdatedAt = { [weak query] in query?.state.dataUpdatedAt }
+        self.hasData = { [weak query] in query?.state.data != nil }
     }
 }

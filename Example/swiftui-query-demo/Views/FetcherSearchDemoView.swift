@@ -12,6 +12,7 @@ struct FetcherSearchDemoView: View {
     @State private var searchText = ""
     @State private var searchHistory: [String] = []
     @Environment(\.queryClient) private var queryClient
+    @State private var showingCacheViewer = false
     
     // Create fetcher instance that will hold dynamic search term
     @StateObject private var pokemonFetcher = PokemonSearchFetcher()
@@ -34,6 +35,19 @@ struct FetcherSearchDemoView: View {
         }
         .navigationTitle("FetchProtocol Search")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingCacheViewer = true
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                }
+                .accessibilityLabel("Query Cache Inspector")
+            }
+        }
+        .sheet(isPresented: $showingCacheViewer) {
+            QueryCacheViewer()
+        }
         .onChange(of: searchText) { _, newValue in
             // Update the fetcher's search term (dynamic!)
             pokemonFetcher.searchTerm = newValue

@@ -12,6 +12,7 @@ import SwiftUIQuery
 
 struct PokemonListView: View {
     let listQuery: QueryState<PokemonList>
+    @Binding var navigationPath: NavigationPath
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -71,7 +72,9 @@ struct PokemonListView: View {
                     GridItem(.flexible())
                 ], spacing: 8) {
                     ForEach(pokemonList.results) { pokemon in
-                        NavigationLink(destination: PokemonDetailView(pokemon: pokemon)) {
+                        Button {
+                            navigationPath.append(NavigationDestination.pokemonDetail(pokemon))
+                        } label: {
                             VStack {
                                 Text(pokemon.name.capitalized)
                                     .font(.caption)

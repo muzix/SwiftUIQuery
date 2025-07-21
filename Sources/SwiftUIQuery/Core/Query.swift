@@ -114,22 +114,27 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
         }
         
         // Create the fetch function from the fetcher
-        let fetchFunction: @Sendable () async throws -> T = { @MainActor in
-            try await fetcher.fetch()
+        let fetchFunction: @Sendable () async throws -> T = { @MainActor [weak fetcher] in
+            guard let fetcher else { throw CancellationError() }
+            return try await fetcher.fetch()
         }
         
         // Get or create query instance from client
         let instance = client.getQuery(
             key: key,
             fetch: fetchFunction,
-            options: options
+            options: options,
+            reportError: reportError.action
         )
         
         self.queryInstance = instance
         
         // Assign the shared state to our @State property for SwiftUI tracking
         self.queryState = instance.state
-        
+
+        // Always mark query as active when view updates (important for cached queries)
+        self.queryInstance?.markActive()
+
         // Set initial data if provided and state is still idle
         if let initialData = initialData, queryState.status == .idle {
             queryState.setSuccess(data: initialData)
@@ -188,6 +193,7 @@ extension Query {
 extension Query {
     /// Called when the view appears
     public func onAppear() {
+        print("onAppear: \(key.stringValue)")
         guard let instance = queryInstance else { return }
         
         // Mark query as active
@@ -204,10 +210,17 @@ extension Query {
     
     /// Called when the view disappears
     public func onDisappear() {
+        print("onDisappear: \(key.stringValue)")
         guard let instance = queryInstance else { return }
         
         // Mark query as inactive
         instance.markInactive()
+        
+        // If query is in error state, reset it for a clean slate on next appear
+        if instance.state.status == .error {
+            print("onDisappear: resetting error state for \(key.stringValue)")
+            instance.reset()
+        }
         
         // Reset the fetch flag so it can fetch again on next appear
         hasFetchedOnAppear = false

@@ -44,24 +44,6 @@ public final class QueryClient: ObservableObject {
         )
     }
 
-    /// Set query data directly
-    /// - Parameters:
-    ///   - key: The query key
-    ///   - updater: Function to update the data
-    public func setQueryData<T: Sendable>(
-        key: any QueryKey,
-        updater: @Sendable (T?) -> T?
-    ) {
-        queryCache.setQueryData(key: key, updater: updater)
-    }
-
-    /// Get query data
-    /// - Parameter key: The query key
-    /// - Returns: The current data if available
-    public func getQueryData<T: Sendable>(key: any QueryKey) -> T? {
-        queryCache.getQueryData(key: key)
-    }
-
     // MARK: - Invalidation
 
     /// Invalidate queries matching the filter

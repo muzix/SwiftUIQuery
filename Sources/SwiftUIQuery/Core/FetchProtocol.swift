@@ -11,7 +11,6 @@ import Foundation
 
 /// Protocol for objects that can fetch data for queries
 /// This allows for dynamic input and stateful fetch logic
-@MainActor
 public protocol FetchProtocol: AnyObject, Sendable {
     associatedtype Output: Sendable
 
@@ -49,8 +48,7 @@ public struct AnyFetcher<T: Sendable>: @unchecked Sendable {
 // MARK: - Default Closure Fetcher
 
 /// Default fetcher implementation that wraps a closure for backward compatibility
-@MainActor
-public final class Fetcher<T: Sendable>: ObservableObject, FetchProtocol {
+public final class Fetcher<T: Sendable>: FetchProtocol {
     private let fetchClosure: @Sendable () async throws -> T
 
     public init(fetch: @Sendable @escaping () async throws -> T) {

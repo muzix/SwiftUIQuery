@@ -23,6 +23,7 @@ extension Duration {
 /// The state container for a query, holding all status information and data.
 /// Uses @Observable for SwiftUI integration and automatic UI updates.
 @Observable
+@MainActor
 public final class QueryState<T: Sendable> {
     // MARK: - Core State Properties
 

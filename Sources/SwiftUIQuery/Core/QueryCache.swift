@@ -108,30 +108,6 @@ final class QueryCache {
     func clear() {
         queries.removeAll()
     }
-
-    /// Set query data directly
-    func setQueryData<T: Sendable>(key: any QueryKey, updater: @Sendable (T?) -> T?) {
-        let hashKey = key.hashKey
-
-        if let anyQuery = queries[hashKey],
-           let typedQuery = anyQuery.instance as? QueryInstance<T>
-        {
-            typedQuery.setData(updater: updater)
-        }
-    }
-
-    /// Get query data
-    func getQueryData<T: Sendable>(key: any QueryKey) -> T? {
-        let hashKey = key.hashKey
-
-        if let anyQuery = queries[hashKey],
-           let typedQuery = anyQuery.instance as? QueryInstance<T>
-        {
-            return typedQuery.getData()
-        }
-
-        return nil
-    }
 }
 
 // MARK: - Type Erasure

@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a single query instance in the cache
 @MainActor
-final class QueryInstance<T: Sendable>: @unchecked Sendable {
+final class QueryInstance<T: Sendable>: Sendable {
     // MARK: - Properties
 
     /// The query key
@@ -70,18 +70,6 @@ final class QueryInstance<T: Sendable>: @unchecked Sendable {
     /// Get the current state
     func getState() -> QueryState<T> {
         state
-    }
-
-    /// Get the current data
-    func getData() -> T? {
-        state.data
-    }
-
-    /// Set data directly
-    func setData(updater: @Sendable (T?) -> T?) {
-        if let newData = updater(state.data) {
-            state.setSuccess(data: newData)
-        }
     }
 
     /// Fetch data for this query

@@ -14,21 +14,21 @@ import Network
 @Observable
 public final class NetworkMonitor: @unchecked Sendable {
     @MainActor public static let shared = NetworkMonitor()
-    
+
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
-    
+
     /// Whether the device is currently connected to the network
     public private(set) var isConnected = false
-    
+
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
                 let wasConnected = self?.isConnected ?? false
                 self?.isConnected = path.status == .satisfied
-                
+
                 // Notify when reconnected (was disconnected, now connected)
-                if !wasConnected && self?.isConnected == true {
+                if !wasConnected, self?.isConnected == true {
                     NotificationCenter.default.post(
                         name: .networkReconnected,
                         object: nil
@@ -38,7 +38,7 @@ public final class NetworkMonitor: @unchecked Sendable {
         }
         monitor.start(queue: queue)
     }
-    
+
     deinit {
         monitor.cancel()
     }

@@ -13,7 +13,7 @@ import SwiftUIQuery
 struct PokemonListView: View {
     let listQuery: QueryState<PokemonList>
     @Binding var navigationPath: NavigationPath
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Query Status
@@ -32,7 +32,7 @@ struct PokemonListView: View {
                         .scaleEffect(0.8)
                 }
             }
-            
+
             // Additional Status Info
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -41,14 +41,14 @@ struct PokemonListView: View {
                         .foregroundColor(listQuery.isLoading ? .orange : .secondary)
                 }
                 .font(.caption)
-                
+
                 HStack {
                     Text("Is Stale:")
                     Text(listQuery.isStale ? "Yes" : "No")
                         .foregroundColor(listQuery.isStale ? .orange : .secondary)
                 }
                 .font(.caption)
-                
+
                 HStack {
                     Text("Has Data:")
                     Text(listQuery.hasData ? "Yes" : "No")
@@ -56,16 +56,16 @@ struct PokemonListView: View {
                 }
                 .font(.caption)
             }
-            
+
             Divider()
-            
+
             // Data Display
             if let pokemonList = listQuery.data {
                 Text("🎉 Loaded \(pokemonList.results.count) Pokemon")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.green)
-                
+
                 LazyVGrid(columns: [
                     GridItem(.flexible()),
                     GridItem(.flexible()),
@@ -112,7 +112,7 @@ struct PokemonListView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private var statusColor: Color {
         switch listQuery.status {
         case .pending: return .gray

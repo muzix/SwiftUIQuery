@@ -8,10 +8,8 @@
 import Testing
 @testable import swiftui_query_demo
 
-struct swiftui_query_demoTests {
-
+struct SwiftUIQueryDemoTests {
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.
     }
-
 }

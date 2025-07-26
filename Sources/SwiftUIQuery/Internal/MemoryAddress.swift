@@ -10,7 +10,6 @@
 import Foundation
 
 struct MemoryAddress<T>: CustomStringConvertible {
-
     let intValue: Int
 
     var description: String {
@@ -25,7 +24,6 @@ struct MemoryAddress<T>: CustomStringConvertible {
 }
 
 extension MemoryAddress where T: AnyObject {
-
     // for classes
     init(of classInstance: T) {
         intValue = unsafeBitCast(classInstance, to: Int.self)

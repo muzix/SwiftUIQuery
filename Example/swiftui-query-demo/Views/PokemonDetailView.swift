@@ -13,22 +13,22 @@ import SwiftUIQuery
 struct PokemonDetailView: View {
     let pokemon: PokemonList.PokemonListItem
     @State private var showingCacheViewer = false
-    
+
     // Query for individual Pokemon details
     @Query<Fetcher<Pokemon>> var pokemonDetailQuery: QueryState<Pokemon>
-    
+
     init(pokemon: PokemonList.PokemonListItem) {
         self.pokemon = pokemon
         self._pokemonDetailQuery = Query(
             "pokemon-\(pokemon.pokemonId)",
             fetch: { try await fetchPokemon(id: pokemon.pokemonId) },
             options: QueryOptions(
-                staleTime: .seconds(5),  // 5 minutes
+                staleTime: .seconds(5), // 5 minutes
                 refetchOnAppear: .ifStale
             )
         )
     }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -53,9 +53,9 @@ struct PokemonDetailView: View {
         }
         .attach(_pokemonDetailQuery)
     }
-    
+
     // MARK: - Content Views
-    
+
     @ViewBuilder
     private var contentView: some View {
         // Show skeleton during initial load (isPending)
@@ -69,9 +69,9 @@ struct PokemonDetailView: View {
             emptyView
         }
     }
-    
+
     // MARK: - Skeleton View
-    
+
     private var skeletonView: some View {
         VStack(spacing: 20) {
             // Pokemon image skeleton - exact same dimensions
@@ -79,33 +79,33 @@ struct PokemonDetailView: View {
                 .fill(Color.gray.opacity(0.2))
                 .frame(width: 200, height: 200)
                 .shimmer()
-            
+
             // Basic info skeleton
             VStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 150, height: 34) // largeTitle height
                     .shimmer()
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 120, height: 20) // title3 height
                     .shimmer()
             }
-            
+
             // Types skeleton
             HStack(spacing: 12) {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 80, height: 36)
                     .shimmer()
-                
+
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 70, height: 36)
                     .shimmer()
             }
-            
+
             // Physical stats skeleton
             GroupBox("Physical Stats") {
                 HStack(spacing: 40) {
@@ -118,7 +118,7 @@ struct PokemonDetailView: View {
                             .frame(width: 60, height: 20)
                             .shimmer()
                     }
-                    
+
                     VStack {
                         Text("Weight")
                             .font(.caption)
@@ -130,22 +130,22 @@ struct PokemonDetailView: View {
                     }
                 }
             }
-            
+
             // Base stats skeleton
             GroupBox("Base Stats") {
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(0..<6, id: \.self) { _ in
+                    ForEach(0 ..< 6, id: \.self) { _ in
                         HStack {
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.gray.opacity(0.2))
                                 .frame(width: 120, height: 16)
                                 .shimmer()
-                            
+
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.gray.opacity(0.2))
                                 .frame(height: 6)
                                 .shimmer()
-                            
+
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(Color.gray.opacity(0.2))
                                 .frame(width: 40, height: 16)
@@ -156,41 +156,41 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     // MARK: - Empty View
-    
+
     private var emptyView: some View {
         VStack(spacing: 24) {
             // Center content within same height as skeleton/content
             Spacer()
-            
+
             VStack(spacing: 16) {
                 Image(systemName: "questionmark.circle")
                     .font(.system(size: 60))
                     .foregroundColor(.gray)
-                
+
                 Text("Pokemon Not Found")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Text("Unable to load Pokemon details. Please try again.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                
+
                 Button("Try Again") {
                     _pokemonDetailQuery.refetch()
                 }
                 .buttonStyle(.borderedProminent)
             }
-            
+
             Spacer()
         }
         .frame(minHeight: 600) // Match approximate content height
     }
-    
+
     private func pokemonContentView(_ pokemon: Pokemon) -> some View {
         ZStack(alignment: .topTrailing) {
             // Main content
@@ -200,7 +200,7 @@ struct PokemonDetailView: View {
                 pokemonTypesView(pokemon)
                 pokemonPhysicalStatsView(pokemon)
                 pokemonBaseStatsView(pokemon)
-                
+
                 // Manual refetch button
                 Button {
                     _pokemonDetailQuery.refetch()
@@ -216,11 +216,11 @@ struct PokemonDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(pokemonDetailQuery.isFetching)
-                
+
                 // Debug status info
                 statusDebugView
             }
-            
+
             // Background refetch indicator
             if pokemonDetailQuery.isRefetching {
                 HStack {
@@ -237,9 +237,9 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     // MARK: - Debug Status View
-    
+
     private var statusDebugView: some View {
         GroupBox("Query Status (Debug)") {
             VStack(spacing: 4) {
@@ -251,7 +251,7 @@ struct PokemonDetailView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(pokemonDetailQuery.isPending ? .blue : .secondary)
                 }
-                
+
                 HStack {
                     Text("isLoading:")
                         .font(.caption.monospaced())
@@ -260,7 +260,7 @@ struct PokemonDetailView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(pokemonDetailQuery.isLoading ? .blue : .secondary)
                 }
-                
+
                 HStack {
                     Text("isFetching:")
                         .font(.caption.monospaced())
@@ -269,7 +269,7 @@ struct PokemonDetailView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(pokemonDetailQuery.isFetching ? .orange : .secondary)
                 }
-                
+
                 HStack {
                     Text("isRefetching:")
                         .font(.caption.monospaced())
@@ -278,7 +278,7 @@ struct PokemonDetailView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(pokemonDetailQuery.isRefetching ? .orange : .secondary)
                 }
-                
+
                 HStack {
                     Text("isFetched:")
                         .font(.caption.monospaced())
@@ -290,9 +290,9 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     private func pokemonImageView(_ pokemon: Pokemon) -> some View {
-        AsyncImage(url: URL(string: pokemon.sprites.front_default ?? "")) { image in
+        AsyncImage(url: URL(string: pokemon.sprites.frontDefault ?? "")) { image in
             image
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -303,19 +303,19 @@ struct PokemonDetailView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
     }
-    
+
     private func pokemonBasicInfoView(_ pokemon: Pokemon) -> some View {
         VStack(spacing: 8) {
             Text(pokemon.name.capitalized)
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            
+
             Text("National №\(String(format: "%03d", pokemon.id))")
                 .font(.title3)
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private func pokemonTypesView(_ pokemon: Pokemon) -> some View {
         HStack(spacing: 12) {
             ForEach(pokemon.types, id: \.type.name) { pokemonType in
@@ -330,7 +330,7 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     private func pokemonPhysicalStatsView(_ pokemon: Pokemon) -> some View {
         GroupBox("Physical Stats") {
             HStack(spacing: 40) {
@@ -341,7 +341,7 @@ struct PokemonDetailView: View {
                     Text("\(Double(pokemon.height) / 10.0, specifier: "%.1f") m")
                         .font(.headline)
                 }
-                
+
                 VStack {
                     Text("Weight")
                         .font(.caption)
@@ -352,7 +352,7 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     private func pokemonBaseStatsView(_ pokemon: Pokemon) -> some View {
         GroupBox("Base Stats") {
             VStack(alignment: .leading, spacing: 12) {
@@ -362,17 +362,17 @@ struct PokemonDetailView: View {
             }
         }
     }
-    
+
     private func statRowView(_ stat: Pokemon.Stat) -> some View {
         HStack {
             Text(formatStatName(stat.stat.name))
                 .font(.subheadline)
                 .frame(width: 120, alignment: .leading)
-            
-            ProgressView(value: Double(stat.base_stat), total: 255)
+
+            ProgressView(value: Double(stat.baseStat), total: 255)
                 .tint(statColor(for: stat.stat.name))
-            
-            Text("\(stat.base_stat)")
+
+            Text("\(stat.baseStat)")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .frame(width: 40, alignment: .trailing)
@@ -393,7 +393,7 @@ extension View {
 
 struct ShimmerView: View {
     @State private var startAnimation = false
-    
+
     var body: some View {
         Rectangle()
             .fill(

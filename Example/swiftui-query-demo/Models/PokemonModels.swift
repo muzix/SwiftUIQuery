@@ -11,13 +11,13 @@ import Foundation
 
 struct PokemonList: Sendable, Codable {
     let results: [PokemonListItem]
-    
+
     struct PokemonListItem: Sendable, Codable, Identifiable, Hashable {
         let name: String
         let url: String
-        
+
         var id: String { name }
-        
+
         var pokemonId: Int {
             let components = url.split(separator: "/")
             return Int(components.last ?? "1") ?? 1
@@ -37,10 +37,15 @@ public struct Pokemon: Sendable, Codable, Identifiable {
     public let stats: [Stat]
 
     public struct Sprites: Sendable, Codable {
-        public let front_default: String?
-        public let front_shiny: String?
+        public let frontDefault: String?
+        public let frontShiny: String?
+
+        enum CodingKeys: String, CodingKey {
+            case frontDefault = "front_default"
+            case frontShiny = "front_shiny"
+        }
     }
-    
+
     public struct PokemonType: Sendable, Codable {
         public let type: TypeInfo
 
@@ -48,10 +53,15 @@ public struct Pokemon: Sendable, Codable, Identifiable {
             public let name: String
         }
     }
-    
+
     public struct Stat: Sendable, Codable {
-        public let base_stat: Int
+        public let baseStat: Int
         public let stat: StatInfo
+
+        enum CodingKeys: String, CodingKey {
+            case baseStat = "base_stat"
+            case stat
+        }
 
         public struct StatInfo: Sendable, Codable {
             public let name: String

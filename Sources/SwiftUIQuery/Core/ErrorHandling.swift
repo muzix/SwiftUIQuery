@@ -14,11 +14,11 @@ import SwiftUI
 public struct ReportErrorAction: Sendable {
     public typealias Action = @MainActor @Sendable (Error) -> Void
     let action: Action
-    
+
     public init(action: @escaping Action) {
         self.action = action
     }
-    
+
     @MainActor
     public func callAsFunction(_ error: Error) {
         action(error)
@@ -37,7 +37,7 @@ public struct ErrorBoundary: ViewModifier {
     @State private var error: Error?
     private let resetAction: () -> Void
     private let errorView: (Error, @escaping () -> Void) -> AnyView
-    
+
     /// Initialize an error boundary
     /// - Parameters:
     ///   - resetAction: Action to call when retrying after an error
@@ -51,7 +51,7 @@ public struct ErrorBoundary: ViewModifier {
         self.resetAction = resetAction
         self.errorView = { error, retry in AnyView(errorView(error, retry)) }
     }
-    
+
     public func body(content: Content) -> some View {
         ZStack {
             // Always keep the content active (but hide it when showing error)
@@ -60,9 +60,9 @@ public struct ErrorBoundary: ViewModifier {
                 .environment(\.reportError, ReportErrorAction { @MainActor error in
                     self.error = error
                 })
-            
+
             // Show error view on top when there's an error
-            if let error = error {
+            if let error {
                 errorView(error) {
                     self.error = nil
                     resetAction()
@@ -79,26 +79,26 @@ public struct ErrorBoundary: ViewModifier {
 public struct DefaultErrorView: View {
     let error: Error
     let retry: () -> Void
-    
+
     public init(error: Error, retry: @escaping () -> Void) {
         self.error = error
         self.retry = retry
     }
-    
+
     public var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundColor(.orange)
-            
+
             Text("Something went wrong")
                 .font(.headline)
-            
+
             Text(error.localizedDescription)
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             Button("Try Again") {
                 retry()
             }
@@ -124,7 +124,7 @@ extension View {
     ) -> some View {
         modifier(ErrorBoundary(resetAction: resetAction, errorView: errorView))
     }
-    
+
     /// Add a simple error boundary with default error view
     /// - Parameter resetAction: Action to call when retrying after an error
     /// - Returns: A view wrapped with error boundary functionality

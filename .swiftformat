@@ -1,0 +1,50 @@
+# SwiftFormat configuration for SwiftUI Query
+
+# Swift version
+--swiftversion 6.0
+
+# Indentation
+--indent 4
+--indentcase false
+--indentstrings false
+--tabwidth 4
+
+# Line length
+--maxwidth 120
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+--wrapreturntype preserve
+--wrapconditions preserve
+
+# Spacing
+--elseposition same-line
+--guardelse same-line
+--xcodeindentation disabled
+--stripunusedargs closure-only
+--redundanttype inferred
+
+# Organization
+--organizetypes actor,class,struct,enum,extension
+--extensionacl on-declarations
+--marktypes never
+--markextensions never
+--groupedextension disabled
+
+# Other rules
+--self init-only
+--selfrequired 
+--importgrouping testable-first
+--nospaceoperators 
+--trimwhitespace always
+--emptybraces no-space
+--conflictmarkers reject
+
+# Disable rules that might conflict with SwiftLint
+--disable redundantReturn,redundantSelf,sortImports,trailingCommas
+
+# Exclusions
+--exclude .build,.swiftpm,DerivedData,Pods,vendor,Documentation

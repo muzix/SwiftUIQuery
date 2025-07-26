@@ -10,28 +10,27 @@ import SwiftUI
 /// The central client that manages all queries and mutations
 @MainActor
 public final class QueryClient: ObservableObject {
-    
     // MARK: - Properties
-    
+
     /// The query cache
     private let queryCache: QueryCache
-    
+
     /// Default query options
     public var defaultOptions: QueryOptions
-    
+
     // MARK: - Initialization
-    
+
     /// Initialize a new QueryClient
     /// - Parameter defaultOptions: Default options for all queries
     public init(defaultOptions: QueryOptions = .default) {
         self.defaultOptions = defaultOptions
         self.queryCache = QueryCache()
     }
-    
+
     // MARK: - Query Management
-    
+
     /// Get or create a query
-    internal func getQuery<T: Sendable>(
+    func getQuery<T: Sendable>(
         key: any QueryKey,
         fetch: @Sendable @escaping () async throws -> T,
         options: QueryOptions,
@@ -44,7 +43,7 @@ public final class QueryClient: ObservableObject {
             reportError: reportError
         )
     }
-    
+
     /// Set query data directly
     /// - Parameters:
     ///   - key: The query key
@@ -55,16 +54,16 @@ public final class QueryClient: ObservableObject {
     ) {
         queryCache.setQueryData(key: key, updater: updater)
     }
-    
+
     /// Get query data
     /// - Parameter key: The query key
     /// - Returns: The current data if available
     public func getQueryData<T: Sendable>(key: any QueryKey) -> T? {
         queryCache.getQueryData(key: key)
     }
-    
+
     // MARK: - Invalidation
-    
+
     /// Invalidate queries matching the filter
     /// - Parameters:
     ///   - filter: Optional filter to match specific queries
@@ -74,12 +73,12 @@ public final class QueryClient: ObservableObject {
         refetchType: RefetchType = .active
     ) async {
         let queries = queryCache.findAll(filter: filter)
-        
+
         // Mark all matching queries as invalidated
         for query in queries {
             query.invalidate()
         }
-        
+
         // Refetch based on type
         switch refetchType {
         case .none:
@@ -109,12 +108,12 @@ public final class QueryClient: ObservableObject {
             }
         }
     }
-    
+
     /// Refetch queries matching the filter
     /// - Parameter filter: Optional filter to match specific queries
     public func refetchQueries(filter: QueryFilter? = nil) async {
         let queries = queryCache.findAll(filter: filter)
-        
+
         // Refetch all matching queries in parallel
         await withTaskGroup(of: Void.self) { group in
             for query in queries {
@@ -122,44 +121,44 @@ public final class QueryClient: ObservableObject {
             }
         }
     }
-    
+
     /// Reset queries matching the filter to their initial state
     /// - Parameter filter: Optional filter to match specific queries
     public func resetQueries(filter: QueryFilter? = nil) {
         let queries = queryCache.findAll(filter: filter)
-        
+
         for query in queries {
             query.reset()
         }
     }
-    
+
     /// Remove queries from the cache
     /// - Parameter filter: Optional filter to match specific queries
     public func removeQueries(filter: QueryFilter? = nil) {
         queryCache.removeQueries(filter: filter)
     }
-    
+
     /// Clear the entire cache
     public func clear() {
         queryCache.clear()
     }
-    
+
     /// Get all queries in the cache
     public func getAllQueries() -> [AnyQueryInstance] {
         queryCache.findAll(filter: nil)
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func mergeOptions(_ options: QueryOptions) -> QueryOptions {
         // Merge provided options with default options
         var merged = options
-        
+
         // Only override if not explicitly set
         if options.staleTime == defaultOptions.staleTime {
             merged.staleTime = defaultOptions.staleTime
         }
-        
+
         return merged
     }
 }
@@ -170,21 +169,21 @@ public final class QueryClient: ObservableObject {
 public struct QueryFilter: Sendable {
     /// Match queries by exact key
     public let key: (any QueryKey)?
-    
+
     /// Match queries by predicate
     public let predicate: (@Sendable (any QueryKey) -> Bool)?
-    
+
     /// Match all queries
-    public static let all = QueryFilter(key: nil, predicate: nil)
-    
+    public static let all = Self(key: nil, predicate: nil)
+
     /// Match queries by exact key
-    public static func key(_ key: any QueryKey) -> QueryFilter {
-        QueryFilter(key: key, predicate: nil)
+    public static func key(_ key: any QueryKey) -> Self {
+        Self(key: key, predicate: nil)
     }
-    
+
     /// Match queries by predicate
-    public static func predicate(_ predicate: @escaping @Sendable (any QueryKey) -> Bool) -> QueryFilter {
-        QueryFilter(key: nil, predicate: predicate)
+    public static func predicate(_ predicate: @escaping @Sendable (any QueryKey) -> Bool) -> Self {
+        Self(key: nil, predicate: predicate)
     }
 }
 

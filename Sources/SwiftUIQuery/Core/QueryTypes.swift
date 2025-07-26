@@ -15,7 +15,7 @@ import SwiftUI
 public protocol QueryKey: Hashable, Sendable {
     /// A string representation of the query key for debugging and logging
     var stringValue: String { get }
-    
+
     /// A hash key for cache storage
     var hashKey: String { get }
 }
@@ -59,7 +59,7 @@ public enum FetchStatus: Sendable, Equatable {
     case paused
     /// Query is not currently fetching
     case idle
-    
+
     public var description: String {
         switch self {
         case .fetching: return "Fetching"
@@ -81,8 +81,8 @@ public enum RefetchTrigger: Sendable, Equatable {
     case ifStale
     /// Refetch based on a custom condition
     case when(@Sendable () -> Bool)
-    
-    public static func == (lhs: RefetchTrigger, rhs: RefetchTrigger) -> Bool {
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case (.never, .never), (.always, .always), (.ifStale, .ifStale):
             return true
@@ -104,8 +104,8 @@ public enum ThrowOnError: Sendable, Equatable {
     case always
     /// Throw errors based on a custom condition
     case when(@Sendable (Error) -> Bool)
-    
-    public static func == (lhs: ThrowOnError, rhs: ThrowOnError) -> Bool {
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case (.never, .never), (.always, .always):
             return true

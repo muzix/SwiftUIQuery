@@ -16,14 +16,14 @@ struct QueryCacheViewer: View {
     @State private var refreshTrigger = false
     @State private var sortOption: SortOption = .key
     @State private var filterOption: FilterOption = .all
-    
+
     enum SortOption: String, CaseIterable {
         case key = "Key"
         case status = "Status"
         case active = "Active"
         case lastUpdated = "Last Updated"
     }
-    
+
     enum FilterOption: String, CaseIterable {
         case all = "All"
         case active = "Active"
@@ -33,7 +33,7 @@ struct QueryCacheViewer: View {
         case error = "Error"
         case stale = "Stale"
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -43,13 +43,13 @@ struct QueryCacheViewer: View {
                 } else {
                     EmptyView().hidden()
                 }
-                
+
                 // Header Stats
                 headerStats
-                
+
                 // Filter and Sort Controls
                 controlsSection
-                
+
                 // Query List
                 ScrollView {
                     LazyVStack(spacing: 8) {
@@ -68,7 +68,7 @@ struct QueryCacheViewer: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button("Invalidate All") {
@@ -77,21 +77,21 @@ struct QueryCacheViewer: View {
                                 refreshQueries()
                             }
                         }
-                        
+
                         Button("Refetch All Active") {
                             Task {
                                 await queryClient?.invalidateQueries(refetchType: .active)
                                 refreshQueries()
                             }
                         }
-                        
+
                         Button("Reset All") {
                             queryClient?.resetQueries()
                             refreshQueries()
                         }
-                        
+
                         Divider()
-                        
+
                         Button("Clear Cache", role: .destructive) {
                             queryClient?.clear()
                             refreshQueries()
@@ -110,9 +110,9 @@ struct QueryCacheViewer: View {
             }
         }
     }
-    
+
     // MARK: - Header Stats
-    
+
     private var headerStats: some View {
         VStack(spacing: 12) {
             HStack(spacing: 16) {
@@ -121,22 +121,22 @@ struct QueryCacheViewer: View {
                     value: "\(queries.count)",
                     color: .blue
                 )
-                
+
                 StatBadge(
                     title: "Active",
-                    value: "\(queries.filter { $0.isActive() }.count)",
+                    value: "\(queries.count(where: { $0.isActive() }))",
                     color: .green
                 )
-                
+
                 StatBadge(
                     title: "Loading",
-                    value: "\(queries.filter { $0.isFetching() }.count)",
+                    value: "\(queries.count(where: { $0.isFetching() }))",
                     color: .orange
                 )
-                
+
                 StatBadge(
                     title: "Stale",
-                    value: "\(queries.filter { $0.isStale() }.count)",
+                    value: "\(queries.count(where: { $0.isStale() }))",
                     color: .yellow
                 )
             }
@@ -145,9 +145,9 @@ struct QueryCacheViewer: View {
         .padding(.vertical, 12)
         .background(Color(UIColor.secondarySystemBackground))
     }
-    
+
     // MARK: - Controls
-    
+
     private var controlsSection: some View {
         VStack(spacing: 12) {
             // Filter Picker
@@ -157,13 +157,13 @@ struct QueryCacheViewer: View {
                 }
             }
             .pickerStyle(.segmented)
-            
+
             // Sort Picker
             HStack {
                 Text("Sort by:")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Picker("Sort", selection: $sortOption) {
                     ForEach(SortOption.allCases, id: \.self) { option in
                         Text(option.rawValue).tag(option)
@@ -175,9 +175,9 @@ struct QueryCacheViewer: View {
         .padding()
         .background(Color(UIColor.systemBackground))
     }
-    
+
     // MARK: - Sorted and Filtered Queries
-    
+
     private var sortedAndFilteredQueries: [AnyQueryInstance] {
         let filtered = queries.filter { query in
             switch filterOption {
@@ -197,7 +197,7 @@ struct QueryCacheViewer: View {
                 return query.isStale()
             }
         }
-        
+
         return filtered.sorted { q1, q2 in
             switch sortOption {
             case .key:
@@ -213,7 +213,7 @@ struct QueryCacheViewer: View {
             }
         }
     }
-    
+
     private func statusSortValue(_ status: QueryStatus) -> Int {
         switch status {
         case .pending: return 0
@@ -221,9 +221,9 @@ struct QueryCacheViewer: View {
         case .success: return 2
         }
     }
-    
+
     // MARK: - Actions
-    
+
     private func refreshQueries() {
         queries = queryClient?.getAllQueries() ?? []
     }
@@ -234,7 +234,7 @@ struct QueryCacheViewer: View {
 struct QueryCacheItem: View {
     let query: AnyQueryInstance
     @State private var isExpanded = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Main Row
@@ -244,39 +244,39 @@ struct QueryCacheItem: View {
                     Circle()
                         .fill(statusColor)
                         .frame(width: 10, height: 10)
-                    
+
                     // Key
                     VStack(alignment: .leading, spacing: 4) {
                         Text(query.key.stringValue)
                             .font(.system(.body, design: .monospaced))
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        
+
                         HStack(spacing: 8) {
                             // Status
                             StatusBadge(status: query.getStatus())
-                            
+
                             // Active/Inactive
                             if query.isActive() {
                                 Badge(text: "ACTIVE", color: .green)
                             } else {
                                 Badge(text: "INACTIVE", color: .gray)
                             }
-                            
+
                             // Stale
                             if query.isStale() {
                                 Badge(text: "STALE", color: .yellow)
                             }
-                            
+
                             // Fetching
                             if query.isFetching() {
                                 Badge(text: "FETCHING", color: .blue)
                             }
                         }
                     }
-                    
+
                     Spacer()
-                    
+
                     // Last Updated
                     if let updatedAt = query.dataUpdatedAt() {
                         VStack(alignment: .trailing, spacing: 2) {
@@ -288,7 +288,7 @@ struct QueryCacheItem: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    
+
                     // Expand Indicator
                     Image(systemName: "chevron.right")
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
@@ -300,20 +300,20 @@ struct QueryCacheItem: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            
+
             // Expanded Actions
             if isExpanded {
                 Divider()
-                
+
                 HStack(spacing: 12) {
                     ActionButton(title: "Refetch", systemImage: "arrow.clockwise") {
                         Task { await query.fetch() }
                     }
-                    
+
                     ActionButton(title: "Invalidate", systemImage: "exclamationmark.circle") {
                         query.invalidate()
                     }
-                    
+
                     ActionButton(title: "Reset", systemImage: "arrow.counterclockwise") {
                         query.reset()
                     }
@@ -325,7 +325,7 @@ struct QueryCacheItem: View {
         .background(Color(UIColor.tertiarySystemBackground))
         .cornerRadius(8)
     }
-    
+
     private var statusColor: Color {
         switch query.getStatus() {
         case .pending: return .gray
@@ -341,14 +341,14 @@ struct StatBadge: View {
     let title: String
     let value: String
     let color: Color
-    
+
     var body: some View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(color)
-            
+
             Text(title)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -359,14 +359,14 @@ struct StatBadge: View {
 
 struct StatusBadge: View {
     let status: QueryStatus
-    
+
     var body: some View {
         Badge(
             text: statusText,
             color: statusColor
         )
     }
-    
+
     private var statusText: String {
         switch status {
         case .pending: return "PENDING"
@@ -374,7 +374,7 @@ struct StatusBadge: View {
         case .error: return "ERROR"
         }
     }
-    
+
     private var statusColor: Color {
         switch status {
         case .pending: return .gray
@@ -387,7 +387,7 @@ struct StatusBadge: View {
 struct Badge: View {
     let text: String
     let color: Color
-    
+
     var body: some View {
         Text(text)
             .font(.caption2)
@@ -404,7 +404,7 @@ struct ActionButton: View {
     let title: String
     let systemImage: String
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
@@ -425,7 +425,7 @@ struct ActionButton: View {
 
 #Preview {
     let queryClient = QueryClient()
-    
+
     return QueryCacheViewer()
         .environment(\.queryClient, queryClient)
 }

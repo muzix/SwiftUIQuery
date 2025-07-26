@@ -43,8 +43,13 @@
 --emptybraces no-space
 --conflictmarkers reject
 
+# Attributes
+--varattributes same-line
+--funcattributes prev-line
+--typeattributes prev-line
+
 # Disable rules that might conflict with SwiftLint
---disable redundantReturn,redundantSelf,sortImports,trailingCommas
+--disable redundantReturn,redundantSelf,sortImports,trailingCommas,wrapMultilineStatementBraces
 
 # Exclusions
 --exclude .build,.swiftpm,DerivedData,Pods,vendor,Documentation

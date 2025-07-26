@@ -9,7 +9,7 @@ import SwiftUI
 
 /// The central client that manages all queries and mutations
 @MainActor
-public final class QueryClient: ObservableObject {
+public final class QueryClient {
     // MARK: - Properties
 
     /// The query cache

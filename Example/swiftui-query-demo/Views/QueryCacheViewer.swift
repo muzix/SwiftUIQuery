@@ -238,7 +238,7 @@ struct QueryCacheItem: View {
     var body: some View {
         VStack(spacing: 0) {
             // Main Row
-            Button(action: { isExpanded.toggle() }) {
+            Button { isExpanded.toggle() } label: {
                 HStack {
                     // Status Indicator
                     Circle()

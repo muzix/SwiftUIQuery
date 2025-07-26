@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a single query instance in the cache
 @MainActor
-final class QueryInstance<T: Sendable>: Sendable {
+final class QueryInstance<T: Sendable> {
     // MARK: - Properties
 
     /// The query key

@@ -31,8 +31,7 @@ final class QueryCache {
 
         // Check if query already exists
         if let anyQuery = queries[hashKey],
-           let existingQuery = anyQuery.instance as? QueryInstance<T>
-        {
+           let existingQuery = anyQuery.instance as? QueryInstance<T> {
             // Update the report error function for existing query
             existingQuery.updateReportError(reportError)
             return existingQuery

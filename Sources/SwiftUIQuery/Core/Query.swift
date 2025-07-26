@@ -12,14 +12,16 @@ import Combine
 
 /// A property wrapper for declarative data fetching in SwiftUI, inspired by TanStack Query.
 /// Provides automatic caching, background refetching, and state management.
-@propertyWrapper @MainActor
-public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable where F.Output: Sendable {
-    public typealias T = F.Output
+@propertyWrapper
+@MainActor
+public struct Query<F: FetchProtocol>: @preconcurrency DynamicProperty,
+    ViewLifecycleAttachable where F.Output: Sendable {
+    public typealias Output = F.Output
 
     // MARK: - Internal State
 
-    @State private var queryState = QueryState<T>()
-    @State private var queryInstance: QueryInstance<T>?
+    @State private var queryState = QueryState<Output>()
+    @State private var queryInstance: QueryInstance<Output>?
     @State private var hasSetupQuery = false
     @State private var hasFetchedOnAppear = false
     @Environment(\.queryClient) private var queryClient
@@ -32,18 +34,18 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
     private let options: QueryOptions
 
     // Data initialization
-    private let placeholderData: (@Sendable (T?) -> T?)?
-    private let initialData: T?
+    private let placeholderData: (@Sendable (Output?) -> Output?)?
+    private let initialData: Output?
 
     // MARK: - Wrapped Value
 
     /// Access to the query state and data
-    public var wrappedValue: QueryState<T> {
+    public var wrappedValue: QueryState<Output> {
         queryState
     }
 
     /// Direct access to the query state for advanced usage
-    public var projectedValue: QueryState<T> {
+    public var projectedValue: QueryState<Output> {
         queryState
     }
 
@@ -59,8 +61,8 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
     public init(
         _ key: any QueryKey,
         fetcher: F,
-        placeholderData: (@Sendable (T?) -> T?)? = nil,
-        initialData: T? = nil,
+        placeholderData: (@Sendable (Output?) -> Output?)? = nil,
+        initialData: Output? = nil,
         options: QueryOptions = .default
     ) {
         self.key = key
@@ -79,9 +81,9 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
     ///   - options: Query configuration options
     public init<T: Sendable>(
         _ key: any QueryKey,
-        fetch: @Sendable @escaping () async throws -> T,
-        placeholderData: (@Sendable (T?) -> T?)? = nil,
-        initialData: T? = nil,
+        fetch: @Sendable @escaping () async throws -> Output,
+        placeholderData: (@Sendable (Output?) -> Output?)? = nil,
+        initialData: Output? = nil,
         options: QueryOptions = .default
     ) where F.Output == T, F == Fetcher<T> {
         self.key = key
@@ -94,13 +96,11 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
     // MARK: - DynamicProperty Implementation
 
     /// SwiftUI calls this method when the view updates
-    public nonisolated func update() {
-        Task { @MainActor in
-            // Setup query on first call
-            if !hasSetupQuery {
-                hasSetupQuery = true
-                setupQuery()
-            }
+    public func update() {
+        // Setup query on first call
+        if !hasSetupQuery {
+            hasSetupQuery = true
+            setupQuery()
         }
     }
 
@@ -108,12 +108,12 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
 
     private func setupQuery() {
         guard let client = queryClient else {
-            print("Warning: QueryClient not found in environment. Make sure to provide it using .queryClient(_:)")
+            // Warning: QueryClient not found in environment. Make sure to provide it using .queryClient(_:)
             return
         }
 
         // Create the fetch function from the fetcher
-        let fetchFunction: @Sendable () async throws -> T = { @MainActor [weak fetcher] in
+        let fetchFunction: @Sendable () async throws -> Output = { @MainActor [weak fetcher] in
             guard let fetcher else { throw CancellationError() }
             return try await fetcher.fetch()
         }
@@ -191,7 +191,7 @@ extension Query {
 extension Query {
     /// Called when the view appears
     public func onAppear() {
-        print("onAppear: \(key.stringValue)")
+        // onAppear: \(key.stringValue)
         guard let instance = queryInstance else { return }
 
         // Mark query as active
@@ -208,7 +208,7 @@ extension Query {
 
     /// Called when the view disappears
     public func onDisappear() {
-        print("onDisappear: \(key.stringValue)")
+        // onDisappear: \(key.stringValue)
         guard let instance = queryInstance else { return }
 
         // Mark query as inactive
@@ -216,7 +216,7 @@ extension Query {
 
         // If query is in error state, reset it for a clean slate on next appear
         if instance.state.status == .error {
-            print("onDisappear: resetting error state for \(key.stringValue)")
+            // onDisappear: resetting error state for \(key.stringValue)
             instance.reset()
         }
 

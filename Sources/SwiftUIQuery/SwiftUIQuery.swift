@@ -3,6 +3,6 @@
 
 public enum SwiftUIQuery {
     public static func demo() {
-        print("demo")
+        // Demo function
     }
 }

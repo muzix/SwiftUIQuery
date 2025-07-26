@@ -102,8 +102,8 @@ line_length:
   ignores_urls: true
 
 type_body_length:
-  warning: 300
-  error: 500
+  warning: 800
+  error: 1000
 
 file_length:
   warning: 500
@@ -157,6 +157,17 @@ trailing_whitespace:
 
 vertical_whitespace:
   max_empty_lines: 2
+
+attributes:
+  always_on_same_line:
+    - "@Environment"
+    - "@EnvironmentObject"
+    - "@ObservedObject"
+    - "@StateObject"
+    - "@State"
+    - "@Binding"
+  always_on_line_above:
+    - "@ViewBuilder"
 
 # Custom Rules
 custom_rules:

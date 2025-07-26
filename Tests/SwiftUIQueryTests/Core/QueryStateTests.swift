@@ -250,6 +250,22 @@ struct QueryStateTests {
         #expect(queryState.isStale == true)
     }
 
+    @Test("Stale time property setting")
+    func staleTimePropertySetting() {
+        let queryState = QueryState<TestUser>()
+
+        // Default stale time should be zero
+        #expect(queryState.staleTime == .zero)
+
+        // Set stale time to 5 minutes
+        queryState.staleTime = .seconds(300)
+        #expect(queryState.staleTime.timeInterval == 300)
+
+        // Set stale time to 1 hour
+        queryState.staleTime = .seconds(3600)
+        #expect(queryState.staleTime.timeInterval == 3600)
+    }
+
     @Test("Invalidation marks data as stale")
     func invalidationStaleMarking() {
         let queryState = QueryState<TestUser>()

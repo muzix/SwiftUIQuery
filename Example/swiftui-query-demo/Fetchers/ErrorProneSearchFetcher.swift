@@ -12,17 +12,17 @@ import SwiftUIQuery
 
 /// Fetcher that demonstrates error boundary behavior with FetchProtocol
 @MainActor
-public final class ErrorProneSearchFetcher: ObservableObject, FetchProtocol {
+public final class ErrorProneSearchFetcher: FetchProtocol {
     // MARK: - Properties
 
     /// The search term (can cause different types of errors)
-    @Published public var searchTerm = ""
+    public var searchTerm = ""
 
     /// Whether to simulate network errors
-    @Published public var simulateNetworkError = false
+    public var simulateNetworkError = false
 
     /// Whether to simulate server errors
-    @Published public var simulateServerError = false
+    public var simulateServerError = false
 
     // MARK: - Initialization
 

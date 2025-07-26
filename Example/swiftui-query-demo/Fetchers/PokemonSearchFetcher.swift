@@ -12,11 +12,11 @@ import SwiftUIQuery
 
 /// Fetcher for searching Pokemon by name with dynamic input
 @MainActor
-public final class PokemonSearchFetcher: ObservableObject, FetchProtocol {
+public final class PokemonSearchFetcher: FetchProtocol {
     // MARK: - Properties
 
     /// The search term to fetch (can change dynamically)
-    @Published public var searchTerm = ""
+    public var searchTerm = ""
 
     /// Base URL for Pokemon API
     private let baseURL = "https://pokeapi.co/api/v2/pokemon/"
@@ -106,12 +106,12 @@ public enum PokemonSearchError: Error, LocalizedError {
 
 /// Advanced fetcher with additional search options
 @MainActor
-public final class AdvancedPokemonSearchFetcher: ObservableObject, FetchProtocol {
+public final class AdvancedPokemonSearchFetcher: FetchProtocol {
     // MARK: - Search Options
 
-    @Published public var searchTerm = ""
-    @Published public var includeForms = true
-    @Published public var cacheLocally = true
+    public var searchTerm = ""
+    public var includeForms = true
+    public var cacheLocally = true
 
     // Internal cache
     private var localCache: [String: Pokemon] = [:]
@@ -149,8 +149,7 @@ public final class AdvancedPokemonSearchFetcher: ObservableObject, FetchProtocol
         let (data, response) = try await URLSession.shared.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else
-        {
+              httpResponse.statusCode == 200 else {
             throw PokemonSearchError.pokemonNotFound(cleanTerm)
         }
 

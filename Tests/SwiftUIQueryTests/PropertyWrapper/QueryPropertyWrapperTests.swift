@@ -24,6 +24,8 @@ struct QueryPropertyWrapperTests {
 
     @Test("Property wrapper with options")
     func propertyWrapperWithOptions() async {
+        // Test property wrapper without SwiftUI environment
+        // This should work after my fix to set staleTime early in setupQuery()
         @Query(
             "test-user-options",
             fetch: { TestUser(id: "1", name: "Test", email: "test@example.com") },
@@ -33,7 +35,12 @@ struct QueryPropertyWrapperTests {
             )
         ) var userQuery
 
-        // Should respect the stale time option
+        // Simulate SwiftUI lifecycle
+        await MainActor.run {
+            _userQuery.update()
+        }
+
+        // Should respect the stale time option even without QueryClient
         #expect(userQuery.staleTime.timeInterval == 300)
     }
 
@@ -46,6 +53,11 @@ struct QueryPropertyWrapperTests {
             fetch: { TestUser(id: "1", name: "Fetched", email: "fetched@example.com") },
             initialData: initialUser
         ) var userQuery
+
+        // Simulate SwiftUI lifecycle
+        await MainActor.run {
+            _userQuery.update()
+        }
 
         // Should have initial data
         #expect(userQuery.data == initialUser)
@@ -61,6 +73,11 @@ struct QueryPropertyWrapperTests {
             fetch: { TestUser(id: "1", name: "Real", email: "real@example.com") },
             placeholderData: { _ in placeholderUser }
         ) var userQuery
+
+        // Simulate SwiftUI lifecycle
+        await MainActor.run {
+            _userQuery.update()
+        }
 
         // Should have placeholder data initially
         #expect(userQuery.data == placeholderUser)
@@ -89,6 +106,11 @@ struct QueryPropertyWrapperTests {
             fetch: { TestUser(id: "1", name: "Test", email: "test@example.com") },
             options: QueryOptions(staleTime: .seconds(3600)) // 1 hour
         ) var userQuery
+
+        // Simulate SwiftUI lifecycle
+        await MainActor.run {
+            _userQuery.update()
+        }
 
         // Test invalidate action
         _userQuery.invalidate()
@@ -163,6 +185,11 @@ struct QueryPropertyWrapperTests {
             fetch: { testUser },
             initialData: testUser // Provide initial data to simulate success
         ) var userQuery
+
+        // Simulate SwiftUI lifecycle
+        await MainActor.run {
+            _userQuery.update()
+        }
 
         // Should be in success state with initial data
         #expect(userQuery.status == .success)

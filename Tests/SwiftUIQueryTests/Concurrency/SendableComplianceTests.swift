@@ -3,6 +3,7 @@ import Foundation
 @testable import SwiftUIQuery
 
 @Suite("Sendable Compliance Tests")
+@MainActor
 struct SendableComplianceTests {
     @Test("Core types are Sendable")
     func coreTypesAreSendable() {
@@ -80,6 +81,7 @@ struct SendableComplianceTests {
 }
 
 @Suite("Actor Isolation Tests")
+@MainActor
 struct ActorIsolationTests {
     @Test("Query cache actor isolation")
     func queryCacheActorIsolation() async {

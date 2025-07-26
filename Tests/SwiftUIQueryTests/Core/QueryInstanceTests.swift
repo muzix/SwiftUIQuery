@@ -3,6 +3,7 @@ import Foundation
 @testable import SwiftUIQuery
 
 @Suite("Query Instance Tests")
+@MainActor
 struct QueryInstanceTests {
     // TODO: Add comprehensive QueryInstance tests
     // These tests need to be implemented after resolving:
@@ -17,6 +18,7 @@ struct QueryInstanceTests {
 }
 
 @Suite("Query Instance Integration Tests")
+@MainActor
 struct QueryInstanceIntegrationTests {
     @Test("Integration tests placeholder")
     func integrationTestsPlaceholder() {

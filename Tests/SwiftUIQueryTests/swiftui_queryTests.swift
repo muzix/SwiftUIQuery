@@ -2,6 +2,7 @@ import Testing
 @testable import SwiftUIQuery
 
 @Suite("SwiftUI Query Main Test Suite")
+@MainActor
 struct SwiftUIQueryTests {
     @Test("Library initialization")
     func libraryInitialization() {
@@ -23,6 +24,7 @@ struct SwiftUIQueryTests {
 // MARK: - Example of parameterized tests
 
 @Suite("Parameterized Tests Example")
+@MainActor
 struct ParameterizedTests {
     @Test("Query key variations", arguments: [
         ("user-1", "User 1"),

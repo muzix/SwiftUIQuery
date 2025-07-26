@@ -3,6 +3,7 @@ import Foundation
 @testable import SwiftUIQuery
 
 @Suite("Query State Tests")
+@MainActor
 struct QueryStateTests {
     // MARK: - Initialization Tests
 
@@ -315,6 +316,7 @@ struct QueryStateTests {
 // MARK: - Query State Concurrency Tests
 
 @Suite("Query State Concurrency Tests")
+@MainActor
 struct QueryStateConcurrencyTests {
     @Test("Query state is Sendable")
     func queryStateIsSendable() {

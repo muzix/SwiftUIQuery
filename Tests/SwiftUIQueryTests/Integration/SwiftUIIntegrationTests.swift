@@ -4,6 +4,7 @@ import ViewInspector
 @testable import SwiftUIQuery
 
 @Suite("SwiftUI Integration Tests")
+@MainActor
 struct SwiftUIIntegrationTests {
     @Test("Query property wrapper in view")
     @MainActor
@@ -90,6 +91,7 @@ struct SwiftUIIntegrationTests {
 }
 
 @Suite("Query Lifecycle Tests")
+@MainActor
 struct QueryLifecycleTests {
     @Test("Query refetches on appear", .timeout(.seconds(2)))
     @MainActor

@@ -41,14 +41,32 @@ extension Array: QueryKey where Element: QueryKey {
 
 /// Represents the current status of a query execution.
 public enum QueryStatus: Sendable, Equatable {
-    /// Query has not been executed yet
-    case idle
-    /// Query is currently being executed
-    case loading
+    /// Query is waiting for first successful result
+    case pending
     /// Query completed successfully with data
     case success
     /// Query failed with an error
     case error
+}
+
+// MARK: - FetchStatus Enum
+
+/// Represents the current fetch status of a query execution.
+public enum FetchStatus: Sendable, Equatable {
+    /// Query is currently fetching (initial or background)
+    case fetching
+    /// Query wanted to fetch but is paused
+    case paused
+    /// Query is not currently fetching
+    case idle
+    
+    public var description: String {
+        switch self {
+        case .fetching: return "Fetching"
+        case .paused: return "Paused"
+        case .idle: return "Idle"
+        }
+    }
 }
 
 // MARK: - RefetchTrigger Enum

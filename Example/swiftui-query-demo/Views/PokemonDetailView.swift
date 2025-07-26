@@ -58,28 +58,236 @@ struct PokemonDetailView: View {
     
     @ViewBuilder
     private var contentView: some View {
-        if pokemonDetailQuery.isLoading {
-            loadingView
+        // Show skeleton during initial load (isPending)
+        if pokemonDetailQuery.isPending {
+            skeletonView
         } else if let pokemon = pokemonDetailQuery.data {
             pokemonContentView(pokemon)
-        } else if let error = pokemonDetailQuery.error {
-            errorView(error)
+        } else if pokemonDetailQuery.error != nil {
+            emptyView
+        } else {
+            emptyView
         }
     }
     
-    private var loadingView: some View {
-        ProgressView("Loading Pokemon...")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.top, 100)
+    // MARK: - Skeleton View
+    
+    private var skeletonView: some View {
+        VStack(spacing: 20) {
+            // Pokemon image skeleton - exact same dimensions
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: 200, height: 200)
+                .shimmer()
+            
+            // Basic info skeleton
+            VStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 150, height: 34) // largeTitle height
+                    .shimmer()
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 120, height: 20) // title3 height
+                    .shimmer()
+            }
+            
+            // Types skeleton
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 80, height: 36)
+                    .shimmer()
+                
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 70, height: 36)
+                    .shimmer()
+            }
+            
+            // Physical stats skeleton
+            GroupBox("Physical Stats") {
+                HStack(spacing: 40) {
+                    VStack {
+                        Text("Height")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 60, height: 20)
+                            .shimmer()
+                    }
+                    
+                    VStack {
+                        Text("Weight")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 60, height: 20)
+                            .shimmer()
+                    }
+                }
+            }
+            
+            // Base stats skeleton
+            GroupBox("Base Stats") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        HStack {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 120, height: 16)
+                                .shimmer()
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(height: 6)
+                                .shimmer()
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 40, height: 16)
+                                .shimmer()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Empty View
+    
+    private var emptyView: some View {
+        VStack(spacing: 24) {
+            // Center content within same height as skeleton/content
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 60))
+                    .foregroundColor(.gray)
+                
+                Text("Pokemon Not Found")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Text("Unable to load Pokemon details. Please try again.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                Button("Try Again") {
+                    _pokemonDetailQuery.refetch()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            
+            Spacer()
+        }
+        .frame(minHeight: 600) // Match approximate content height
     }
     
     private func pokemonContentView(_ pokemon: Pokemon) -> some View {
-        VStack(spacing: 20) {
-            pokemonImageView(pokemon)
-            pokemonBasicInfoView(pokemon)
-            pokemonTypesView(pokemon)
-            pokemonPhysicalStatsView(pokemon)
-            pokemonBaseStatsView(pokemon)
+        ZStack(alignment: .topTrailing) {
+            // Main content
+            VStack(spacing: 20) {
+                pokemonImageView(pokemon)
+                pokemonBasicInfoView(pokemon)
+                pokemonTypesView(pokemon)
+                pokemonPhysicalStatsView(pokemon)
+                pokemonBaseStatsView(pokemon)
+                
+                // Manual refetch button
+                Button {
+                    _pokemonDetailQuery.refetch()
+                } label: {
+                    HStack {
+                        if pokemonDetailQuery.isFetching {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .tint(.white)
+                        }
+                        Text(pokemonDetailQuery.isFetching ? "Refreshing..." : "Refresh Pokemon")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(pokemonDetailQuery.isFetching)
+                
+                // Debug status info
+                statusDebugView
+            }
+            
+            // Background refetch indicator
+            if pokemonDetailQuery.isRefetching {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .tint(.blue)
+                }
+                .padding(8)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+                .shadow(radius: 2)
+                .padding(.top, 8)
+                .padding(.trailing, 8)
+            }
+        }
+    }
+    
+    // MARK: - Debug Status View
+    
+    private var statusDebugView: some View {
+        GroupBox("Query Status (Debug)") {
+            VStack(spacing: 4) {
+                HStack {
+                    Text("isPending:")
+                        .font(.caption.monospaced())
+                    Spacer()
+                    Text(pokemonDetailQuery.isPending ? "true" : "false")
+                        .font(.caption.monospaced())
+                        .foregroundColor(pokemonDetailQuery.isPending ? .blue : .secondary)
+                }
+                
+                HStack {
+                    Text("isLoading:")
+                        .font(.caption.monospaced())
+                    Spacer()
+                    Text(pokemonDetailQuery.isLoading ? "true" : "false")
+                        .font(.caption.monospaced())
+                        .foregroundColor(pokemonDetailQuery.isLoading ? .blue : .secondary)
+                }
+                
+                HStack {
+                    Text("isFetching:")
+                        .font(.caption.monospaced())
+                    Spacer()
+                    Text(pokemonDetailQuery.isFetching ? "true" : "false")
+                        .font(.caption.monospaced())
+                        .foregroundColor(pokemonDetailQuery.isFetching ? .orange : .secondary)
+                }
+                
+                HStack {
+                    Text("isRefetching:")
+                        .font(.caption.monospaced())
+                    Spacer()
+                    Text(pokemonDetailQuery.isRefetching ? "true" : "false")
+                        .font(.caption.monospaced())
+                        .foregroundColor(pokemonDetailQuery.isRefetching ? .orange : .secondary)
+                }
+                
+                HStack {
+                    Text("isFetched:")
+                        .font(.caption.monospaced())
+                    Spacer()
+                    Text(pokemonDetailQuery.isFetched ? "true" : "false")
+                        .font(.caption.monospaced())
+                        .foregroundColor(pokemonDetailQuery.isFetched ? .green : .secondary)
+                }
+            }
         }
     }
     
@@ -170,26 +378,41 @@ struct PokemonDetailView: View {
                 .frame(width: 40, alignment: .trailing)
         }
     }
+}
+
+// MARK: - Shimmer Effect Extension
+
+extension View {
+    func shimmer() -> some View {
+        self.overlay(
+            ShimmerView()
+        )
+        .clipped()
+    }
+}
+
+struct ShimmerView: View {
+    @State private var startAnimation = false
     
-    private func errorView(_ error: Error) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundColor(.orange)
-            
-            Text("Failed to load Pokemon")
-                .font(.headline)
-            
-            Text(error.localizedDescription)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
-            Button("Try Again") {
-                _pokemonDetailQuery.refetch()
+    var body: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [Color.clear, Color.white.opacity(0.6), Color.clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .rotationEffect(.degrees(-70))
+            .offset(x: startAnimation ? 400 : -400)
+            .animation(
+                Animation
+                    .easeInOut(duration: 1.5)
+                    .repeatForever(autoreverses: false),
+                value: startAnimation
+            )
+            .onAppear {
+                startAnimation = true
             }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
     }
 }

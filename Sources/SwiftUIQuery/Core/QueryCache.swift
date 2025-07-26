@@ -156,7 +156,7 @@ public class AnyQueryInstance {
         self.fetch = { [weak query] in await query?.fetch() }
         self.reset = { [weak query] in query?.reset() }
         self.isActive = { [weak query] in query?.isActive ?? false }
-        self.getStatus = { [weak query] in query?.state.status ?? .idle }
+        self.getStatus = { [weak query] in query?.state.status ?? .pending }
         self.isStale = { [weak query] in query?.state.isStale ?? false }
         self.isFetching = { [weak query] in query?.state.isFetching ?? false }
         self.dataUpdatedAt = { [weak query] in query?.state.dataUpdatedAt }

@@ -28,7 +28,10 @@ public final class QueryState<T: Sendable> {
     // MARK: - Core State Properties
     
     /// The current status of the query
-    public var status: QueryStatus = .idle
+    public var status: QueryStatus = .pending
+    
+    /// The current fetch status of the query
+    public var fetchStatus: FetchStatus = .idle
     
     /// The data returned by the query (nil if no data or error)
     public var data: T?
@@ -36,11 +39,6 @@ public final class QueryState<T: Sendable> {
     /// The error from the last failed query attempt
     public var error: Error?
     
-    /// Whether the query is currently fetching (includes background refetches)
-    public var isFetching: Bool = false
-    
-    /// Whether this is the initial fetch for this query
-    public var isInitialLoading: Bool = false
     
     /// The stale time duration for this query
     internal var staleTime: Duration = .zero
@@ -59,11 +57,29 @@ public final class QueryState<T: Sendable> {
     /// When the query was last fetched (successful or not)
     public var lastFetchedAt: Date?
     
+    /// Whether the query has been fetched at least once
+    public private(set) var isFetched: Bool = false
+    
     // MARK: - Computed Properties
     
-    /// Whether the query is in loading state (initial load only)
+    /// Whether the query is pending (no cached data and not finished yet)
+    public var isPending: Bool {
+        status == .pending
+    }
+    
+    /// Whether the query is in loading state (actively fetching with no cached data)
     public var isLoading: Bool {
-        status == .loading && isInitialLoading
+        isPending && fetchStatus == .fetching
+    }
+    
+    /// Whether the query is currently fetching (includes initial and background refetches)
+    public var isFetching: Bool {
+        fetchStatus == .fetching
+    }
+    
+    /// Whether the query is background refetching (excludes initial fetch)
+    public var isRefetching: Bool {
+        isFetching && !isPending
     }
     
     /// Whether the query completed successfully
@@ -76,10 +92,6 @@ public final class QueryState<T: Sendable> {
         status == .error
     }
     
-    /// Whether the query is idle (not yet executed)
-    public var isIdle: Bool {
-        status == .idle
-    }
     
     /// Whether there is any data available (even if stale)
     public var hasData: Bool {
@@ -114,12 +126,17 @@ public final class QueryState<T: Sendable> {
     
     // MARK: - State Mutations
     
-    /// Mark the query as loading
-    public func setLoading(isInitial: Bool = false) {
-        status = .loading
-        isFetching = true
-        isInitialLoading = isInitial
+    /// Start initial fetch - sets pending status and begins fetching
+    public func startInitialFetch() {
+        status = .pending
+        fetchStatus = .fetching
         error = nil
+    }
+    
+    /// Start refetch - begins fetching while keeping current status
+    public func startRefetch() {
+        fetchStatus = .fetching
+        // Keep existing status, data, error, etc.
     }
     
     /// Mark the query as successful with data
@@ -127,9 +144,9 @@ public final class QueryState<T: Sendable> {
         self.data = data
         self.status = .success
         self.error = nil
-        self.isFetching = false
-        self.isInitialLoading = false
+        self.fetchStatus = .idle
         self.isInvalidated = false  // Clear invalidation on successful fetch
+        self.isFetched = true
         self.dataUpdatedAt = Date()
         self.lastFetchedAt = Date()
     }
@@ -138,8 +155,8 @@ public final class QueryState<T: Sendable> {
     public func setError(_ error: Error) {
         self.error = error
         self.status = .error
-        self.isFetching = false
-        self.isInitialLoading = false
+        self.fetchStatus = .idle
+        self.isFetched = true
         self.errorUpdatedAt = Date()
         self.lastFetchedAt = Date()
     }
@@ -154,14 +171,14 @@ public final class QueryState<T: Sendable> {
         isInvalidated = true
     }
     
-    /// Reset the query to idle state
+    /// Reset the query to pending state
     public func reset() {
-        status = .idle
+        status = .pending
+        fetchStatus = .idle
         data = nil
         error = nil
-        isFetching = false
-        isInitialLoading = false
         isInvalidated = false
+        isFetched = false
         dataUpdatedAt = nil
         errorUpdatedAt = nil
         lastFetchedAt = nil
@@ -221,7 +238,7 @@ extension QueryState {
     /// Convert the current state to a QueryResult for pattern matching
     public var result: QueryResult<T> {
         switch status {
-        case .idle, .loading:
+        case .pending:
             return .loading
         case .success:
             guard let data = data else { return .loading }

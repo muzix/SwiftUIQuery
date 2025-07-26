@@ -941,9 +941,411 @@ var notificationsQuery
 .attach(notificationsQuery) // Always refetches on appear
 ```
 
-### Next Steps
-1. Define QueryOptions structure
-2. Implement Query property wrapper
-3. Create QueryKey protocol
-4. Build query state management
-5. Add lifecycle integration
+
+## useInfiniteQuery Clone - Design Exploration
+
+### React Query useInfiniteQuery
+```javascript
+const {
+  data,
+  error,
+  fetchNextPage,
+  fetchPreviousPage,
+  hasNextPage,
+  hasPreviousPage,
+  isFetchingNextPage,
+  isFetchingPreviousPage,
+  status,
+  fetchStatus,
+} = useInfiniteQuery({
+  queryKey: ['projects'],
+  queryFn: ({ pageParam }) => fetchProjects({ cursor: pageParam }),
+  initialPageParam: 0,
+  getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => lastPage.nextCursor,
+  getPreviousPageParam: (firstPage, allPages, firstPageParam, allPageParams) => firstPage.prevCursor,
+  maxPages: 3,
+  pages: 5, // Deprecated, use maxPages
+})
+
+// data shape:
+// {
+//   pages: [page1, page2, page3],
+//   pageParams: [param1, param2, param3]
+// }
+```
+
+### SwiftUI @InfiniteQuery Design
+
+#### Basic Usage
+```swift
+struct PostsView: View {
+    @InfiniteQuery(
+        "posts",
+        initialPageParam: 0,
+        fetch: { pageParam in 
+            try await api.fetchPosts(page: pageParam)
+        },
+        getNextPageParam: { lastPage, allPages, lastPageParam, allPageParams in
+            lastPage.hasMore ? lastPageParam + 1 : nil
+        }
+    ) var postsQuery
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack {
+                ForEach(postsQuery.data?.pages ?? []) { page in
+                    ForEach(page.posts) { post in
+                        PostRow(post: post)
+                    }
+                }
+                
+                if postsQuery.hasNextPage {
+                    ProgressView()
+                        .onAppear {
+                            Task { try await _postsQuery.fetchNextPage() }
+                        }
+                }
+            }
+        }
+        .attach(_postsQuery)
+    }
+}
+```
+
+#### Data Structure
+```swift
+public struct InfiniteData<Page: Sendable, PageParam: Sendable>: Sendable {
+    public let pages: [Page]
+    public let pageParams: [PageParam]
+    
+    public init(pages: [Page] = [], pageParams: [PageParam] = []) {
+        self.pages = pages
+        self.pageParams = pageParams
+    }
+}
+```
+
+#### Configuration Options
+```swift
+public struct InfiniteQueryOptions<Page: Sendable, PageParam: Sendable>: Sendable {
+    // Required
+    public let initialPageParam: PageParam
+    public let getNextPageParam: @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?
+    
+    // Optional
+    public let getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)?
+    
+    // Standard query options
+    public let staleTime: Duration
+    public let gcTime: Duration
+    public let refetchOnAppear: RefetchTrigger
+    public let refetchOnReconnect: RefetchTrigger
+    public let retry: RetryConfig
+    public let enabled: Bool
+    
+    public init(
+        initialPageParam: PageParam,
+        getNextPageParam: @escaping @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?,
+        getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)? = nil,
+        staleTime: Duration = .zero,
+        gcTime: Duration = .minutes(5),
+        refetchOnAppear: RefetchTrigger = .ifStale,
+        refetchOnReconnect: RefetchTrigger = .ifStale,
+        retry: RetryConfig = .default,
+        enabled: Bool = true
+    ) {
+        // Initialize all properties
+    }
+}
+```
+
+#### Property Wrapper API
+```swift
+@propertyWrapper @MainActor
+public struct InfiniteQuery<Page: Sendable, PageParam: Sendable>: DynamicProperty, ViewLifecycleAttachable {
+    
+    // State management
+    @State private var observer: InfiniteQueryObserver<Page, PageParam>?
+    @Environment(\.queryClient) private var queryClient
+    
+    // Configuration
+    private let key: any QueryKey
+    private let fetch: @Sendable (PageParam) async throws -> Page
+    private let options: InfiniteQueryOptions<Page, PageParam>
+    
+    // Initialization
+    public init(
+        _ key: any QueryKey,
+        initialPageParam: PageParam,
+        fetch: @escaping @Sendable (PageParam) async throws -> Page,
+        getNextPageParam: @escaping @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?,
+        getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)? = nil,
+        options: QueryOptions = .default
+    ) {
+        self.key = key
+        self.fetch = fetch
+        self.options = InfiniteQueryOptions(
+            initialPageParam: initialPageParam,
+            getNextPageParam: getNextPageParam,
+            getPreviousPageParam: getPreviousPageParam,
+            staleTime: options.staleTime,
+            gcTime: options.gcTime,
+            refetchOnAppear: options.refetchOnAppear,
+            refetchOnReconnect: options.refetchOnReconnect,
+            retry: options.retry,
+            enabled: options.enabled
+        )
+    }
+    
+    // Property wrapper value
+    public var wrappedValue: InfiniteQueryState<Page, PageParam> {
+        observer?.state ?? InfiniteQueryState()
+    }
+    
+    // Projected value for actions
+    public var projectedValue: InfiniteQueryActions<Page, PageParam> {
+        InfiniteQueryActions(observer: observer)
+    }
+}
+```
+
+#### State and Actions
+```swift
+// State exposed to views
+@Observable
+public class InfiniteQueryState<Page: Sendable, PageParam: Sendable>: Sendable {
+    // Data
+    public var data: InfiniteData<Page, PageParam>?
+    
+    // Standard query state
+    public var status: QueryStatus = .idle
+    public var error: Error?
+    public var isLoading: Bool { status == .loading }
+    public var isSuccess: Bool { status == .success }
+    public var isError: Bool { status == .error }
+    public var isFetching: Bool = false
+    public var isStale: Bool = true
+    
+    // Infinite query specific state
+    public var hasNextPage: Bool = false
+    public var hasPreviousPage: Bool = false
+    public var isFetchingNextPage: Bool = false
+    public var isFetchingPreviousPage: Bool = false
+    public var isFetchNextPageError: Bool = false
+    public var isFetchPreviousPageError: Bool = false
+}
+
+// Actions available via projected value
+public struct InfiniteQueryActions<Page: Sendable, PageParam: Sendable> {
+    weak var observer: InfiniteQueryObserver<Page, PageParam>?
+    
+    public func fetchNextPage() async throws {
+        try await observer?.fetchNextPage()
+    }
+    
+    public func fetchPreviousPage() async throws {
+        try await observer?.fetchPreviousPage()
+    }
+    
+    public func refetch() async throws {
+        try await observer?.refetch()
+    }
+    
+    public func invalidate() {
+        observer?.invalidate()
+    }
+    
+    public func reset() {
+        observer?.reset()
+    }
+}
+```
+
+#### Advanced Examples
+
+##### Bidirectional Pagination
+```swift
+struct TimelineView: View {
+    @InfiniteQuery(
+        "timeline",
+        initialPageParam: Date.now,
+        fetch: { timestamp in
+            try await api.fetchPosts(before: timestamp)
+        },
+        getNextPageParam: { lastPage, _, _, _ in
+            lastPage.posts.last?.timestamp
+        },
+        getPreviousPageParam: { firstPage, _, _, _ in
+            firstPage.posts.first?.timestamp
+        }
+    ) var timelineQuery
+    
+    var body: some View {
+        ScrollView {
+            // Pull to load newer posts
+            if timelineQuery.hasPreviousPage {
+                Button("Load Newer") {
+                    Task { try await _timelineQuery.fetchPreviousPage() }
+                }
+            }
+            
+            // Posts list
+            LazyVStack {
+                ForEach(timelineQuery.data?.pages ?? []) { page in
+                    ForEach(page.posts) { post in
+                        PostRow(post: post)
+                    }
+                }
+            }
+            
+            // Load older posts at bottom
+            if timelineQuery.hasNextPage {
+                ProgressView()
+                    .onAppear {
+                        Task { try await _timelineQuery.fetchNextPage() }
+                    }
+            }
+        }
+    }
+}
+```
+
+##### Cursor-based Pagination
+```swift
+struct SearchResultsView: View {
+    let searchTerm: String
+    
+    @InfiniteQuery(
+        ["search", searchTerm],
+        initialPageParam: nil as String?,
+        fetch: { cursor in
+            try await api.search(term: searchTerm, cursor: cursor)
+        },
+        getNextPageParam: { lastPage, _, _, _ in
+            lastPage.nextCursor
+        }
+    ) var searchQuery
+    
+    var body: some View {
+        List {
+            ForEach(searchQuery.data?.pages ?? []) { page in
+                Section {
+                    ForEach(page.results) { result in
+                        SearchResultRow(result: result)
+                    }
+                }
+            }
+            
+            if searchQuery.isFetchingNextPage {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if searchQuery.hasNextPage {
+                Button("Load More") {
+                    Task { try await _searchQuery.fetchNextPage() }
+                }
+            }
+        }
+    }
+}
+```
+
+##### With FetchProtocol
+```swift
+@MainActor
+final class PostsFetcher: FetchProtocol {
+    @Published var category: String = "all"
+    let pageSize = 20
+    
+    func fetch(pageParam: Int) async throws -> PostsPage {
+        let response = try await api.fetchPosts(
+            category: category,
+            page: pageParam,
+            size: pageSize
+        )
+        return response
+    }
+}
+
+struct PostsView: View {
+    @StateObject private var fetcher = PostsFetcher()
+    
+    @InfiniteQuery(
+        "posts",
+        initialPageParam: 1,
+        fetcher: fetcher,
+        getNextPageParam: { page, _, lastParam, _ in
+            page.hasMore ? lastParam + 1 : nil
+        }
+    ) var postsQuery
+    
+    var body: some View {
+        VStack {
+            Picker("Category", selection: $fetcher.category) {
+                Text("All").tag("all")
+                Text("Tech").tag("tech")
+                Text("Design").tag("design")
+            }
+            .onChange(of: fetcher.category) { _, _ in
+                _postsQuery.invalidate()
+                Task { try await _postsQuery.refetch() }
+            }
+            
+            ScrollView {
+                LazyVStack {
+                    ForEach(postsQuery.data?.pages ?? []) { page in
+                        ForEach(page.posts) { post in
+                            PostRow(post: post)
+                        }
+                    }
+                    
+                    if postsQuery.hasNextPage {
+                        ProgressView()
+                            .onAppear {
+                                Task { try await _postsQuery.fetchNextPage() }
+                            }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+#### Key Behaviors to Implement
+
+1. **Page Management**
+   - **Forward pagination**: Appends new page to end of pages array
+   - **Backward pagination**: Prepends new page to beginning of pages array
+   - **Page parameters**: Stored in parallel array with pages
+   - **Empty page handling**: Stops pagination when page param is nil
+
+2. **State Isolation**
+   - **Error states**:
+     - `isFetchNextPageError = isError && direction == 'forward'`
+     - `isFetchPreviousPageError = isError && direction == 'backward'`
+     - `isRefetchError` excludes page fetch errors
+   - **Loading states**:
+     - `isFetchingNextPage = isFetching && direction == 'forward'`
+     - `isFetchingPreviousPage = isFetching && direction == 'backward'`
+     - `isRefetching` excludes page fetching states
+   - **Direction tracking**: Uses fetchMeta to distinguish fetch types
+
+3. **Refetch Behavior**
+   - **Full refetch**: Resets to initial page, fetches all pages fresh
+   - **Page fetch**: Only fetches next/previous single page
+   - **Invalidation**: Marks all existing pages as stale
+   - **Background refetch**: Maintains current pages while fetching
+
+4. **Page Determination**
+   - `hasNextPage`: True if `getNextPageParam` returns non-nil value
+   - `hasPreviousPage`: True if `getPreviousPageParam` exists and returns non-nil
+   - Page params passed to fetch function as context
+
+5. **Concurrency & Memory**
+   - Single fetch operation at a time per query
+   - Abort signal support for cancellation
+   - Structural sharing for performance
+   - Weak references for garbage collection

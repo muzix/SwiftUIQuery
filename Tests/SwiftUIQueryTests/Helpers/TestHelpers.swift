@@ -19,11 +19,24 @@ struct TestPost: Sendable, Codable, Equatable {
 
 // MARK: - Test Query Keys
 
-enum TestQueryKey: Hashable, Sendable {
+enum TestQueryKey: QueryKey, Sendable {
     case user(id: String)
     case posts
     case post(id: String)
     case userPosts(userId: String)
+    
+    var stringValue: String {
+        switch self {
+        case .user(let id):
+            return "user-\(id)"
+        case .posts:
+            return "posts"
+        case .post(let id):
+            return "post-\(id)"
+        case .userPosts(let userId):
+            return "user-posts-\(userId)"
+        }
+    }
 }
 
 // MARK: - Mock Network Client
@@ -149,6 +162,17 @@ struct TimeoutTrait: TestTrait {
 extension TestTrait where Self == TimeoutTrait {
     static func timeout(_ duration: Duration) -> Self {
         TimeoutTrait(timeout: duration)
+    }
+}
+
+// MARK: - Testing Framework Extensions
+
+extension TimeLimitTrait.Duration {
+    /// Helper to create time limits in seconds for testing
+    /// Since Testing framework requires minutes, we convert appropriately
+    static func seconds(_ seconds: Int) -> TimeLimitTrait.Duration {
+        let minutes = max(1, (seconds + 59) / 60) // Round up to nearest minute
+        return .minutes(minutes)
     }
 }
 

@@ -93,9 +93,14 @@ final class QueryInstance<T: Sendable>: @unchecked Sendable {
         // Don't fetch if disabled
         guard options.enabled else { return }
         
-        // Update state to loading
-        let isInitial = state.status == .idle
-        state.setLoading(isInitial: isInitial)
+        // Update fetch status - different behavior for initial vs refetch
+        if state.isFetched {
+            // Background refetch - keep current status, just start fetching
+            state.startRefetch()
+        } else {
+            // Initial fetch - set to pending and start fetching
+            state.startInitialFetch()
+        }
         
         // Create new fetch task
         let task = Task {

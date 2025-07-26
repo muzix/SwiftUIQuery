@@ -115,3 +115,11 @@ From the official documentation:
 - Inactive queries garbage collected after 5 minutes
 - Failed queries retry 3 times with exponential backoff
 - Query results are structurally shared to detect changes
+
+## Documentation Review Tasks
+
+- Read documents in @Documentation/query/docs/framework/react/
+
+## Development Best Practices
+
+- When implementing swift version of react query, always looks for latest implementation details from react query. Behavior of enum, public API should be kept closest as much as possible

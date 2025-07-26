@@ -135,8 +135,8 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
         // Always mark query as active when view updates (important for cached queries)
         self.queryInstance?.markActive()
 
-        // Set initial data if provided and state is still idle
-        if let initialData = initialData, queryState.status == .idle {
+        // Set initial data if provided and state is still pending
+        if let initialData = initialData, queryState.status == .pending && !queryState.isFetched {
             queryState.setSuccess(data: initialData)
         }
         
@@ -148,7 +148,7 @@ public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
         }
         
         // If we should fetch and haven't fetched on appear yet, fetch immediately
-        if queryState.status == .idle && !hasFetchedOnAppear && shouldFetchOnAppears() {
+        if queryState.status == .pending && !queryState.isFetched && !hasFetchedOnAppear && shouldFetchOnAppears() {
             hasFetchedOnAppear = true
             Task {
                 await instance.fetch()
@@ -233,11 +233,11 @@ extension Query {
         
         switch options.refetchOnAppear {
         case .never:
-            return queryState.status == .idle
+            return !queryState.isFetched
         case .always:
             return true
         case .ifStale:
-            return queryState.isStale || queryState.status == .idle
+            return queryState.isStale || !queryState.isFetched
         case .when(let condition):
             return condition()
         }

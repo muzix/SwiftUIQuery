@@ -12,8 +12,7 @@ import SwiftUIQuery
 extension QueryStatus {
     var description: String {
         switch self {
-        case .idle: return "Idle"
-        case .loading: return "Loading"
+        case .pending: return "Pending"
         case .success: return "Success"
         case .error: return "Error"
         }

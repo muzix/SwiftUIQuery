@@ -216,10 +216,9 @@ struct QueryCacheViewer: View {
     
     private func statusSortValue(_ status: QueryStatus) -> Int {
         switch status {
-        case .loading: return 0
+        case .pending: return 0
         case .error: return 1
         case .success: return 2
-        case .idle: return 3
         }
     }
     
@@ -329,8 +328,7 @@ struct QueryCacheItem: View {
     
     private var statusColor: Color {
         switch query.getStatus() {
-        case .idle: return .gray
-        case .loading: return .blue
+        case .pending: return .gray
         case .success: return query.isStale() ? .yellow : .green
         case .error: return .red
         }
@@ -371,8 +369,7 @@ struct StatusBadge: View {
     
     private var statusText: String {
         switch status {
-        case .idle: return "IDLE"
-        case .loading: return "LOADING"
+        case .pending: return "PENDING"
         case .success: return "SUCCESS"
         case .error: return "ERROR"
         }
@@ -380,8 +377,7 @@ struct StatusBadge: View {
     
     private var statusColor: Color {
         switch status {
-        case .idle: return .gray
-        case .loading: return .blue
+        case .pending: return .gray
         case .success: return .green
         case .error: return .red
         }

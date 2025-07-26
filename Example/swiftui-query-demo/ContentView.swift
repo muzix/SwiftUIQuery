@@ -38,8 +38,7 @@ struct ContentView: View {
     
     private var statusText: String {
         switch pokemonListQuery.status {
-        case .idle: return "Idle"
-        case .loading: return "Loading"
+        case .pending: return "Pending"
         case .success: return "Success"
         case .error: return "Error"
         }
@@ -47,8 +46,7 @@ struct ContentView: View {
     
     private var statusColor: Color {
         switch pokemonListQuery.status {
-        case .idle: return .gray
-        case .loading: return .blue
+        case .pending: return .blue
         case .success: return .green
         case .error: return .red
         }
@@ -71,7 +69,7 @@ struct ContentView: View {
                         .fontWeight(.semibold)
                         .multilineTextAlignment(.center)
                     
-                    Text("✨ New: Error Boundaries & Configurable Refetch API!")
+                    Text("✨ TanStack Query v5 API Compatible!")
                         .font(.caption)
                         .foregroundColor(.blue)
                         .fontWeight(.medium)
@@ -81,39 +79,6 @@ struct ContentView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Navigation to QueryClient Demos
-                        GroupBox("🎯 NEW: QueryClient Demos") {
-                            VStack(spacing: 12) {
-                                Text("Explore advanced QueryClient features")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                
-                                VStack(spacing: 8) {
-                                    Button("✨ FetchProtocol Search Demo") {
-                                        navigate(to: .fetcherSearchDemo)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    
-                                    Button("🛡️ Error Boundary Demo") {
-                                        navigate(to: .errorBoundaryDemo)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.red)
-                                    
-                                    Button("Multi-Query Demo") {
-                                        navigate(to: .multiQueryDemo)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    
-                                    Button("Active/Inactive Tracking") {
-                                        navigate(to: .queryClientDemo)
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-                            }
-                        }
-                        
                         // Pokemon List Section
                         GroupBox("Pokemon List Query Demo") {
                             PokemonListView(listQuery: pokemonListQuery, navigationPath: $navigationPath)
@@ -127,6 +92,54 @@ struct ContentView: View {
                                     Spacer()
                                     Text(statusText)
                                         .foregroundColor(statusColor)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("Fetch Status:")
+                                    Spacer()
+                                    Text(pokemonListQuery.fetchStatus.description)
+                                        .foregroundColor(.secondary)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("isPending:")
+                                    Spacer()
+                                    Text(pokemonListQuery.isPending ? "Yes" : "No")
+                                        .foregroundColor(pokemonListQuery.isPending ? .blue : .green)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("isLoading:")
+                                    Spacer()
+                                    Text(pokemonListQuery.isLoading ? "Yes" : "No")
+                                        .foregroundColor(pokemonListQuery.isLoading ? .blue : .green)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("isFetching:")
+                                    Spacer()
+                                    Text(pokemonListQuery.isFetching ? "Yes" : "No")
+                                        .foregroundColor(pokemonListQuery.isFetching ? .orange : .green)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("isRefetching:")
+                                    Spacer()
+                                    Text(pokemonListQuery.isRefetching ? "Yes" : "No")
+                                        .foregroundColor(pokemonListQuery.isRefetching ? .orange : .green)
+                                        .fontWeight(.medium)
+                                }
+                                
+                                HStack {
+                                    Text("isFetched:")
+                                    Spacer()
+                                    Text(pokemonListQuery.isFetched ? "Yes" : "No")
+                                        .foregroundColor(pokemonListQuery.isFetched ? .green : .gray)
                                         .fontWeight(.medium)
                                 }
                                 
@@ -225,16 +238,10 @@ struct ContentView: View {
             }
             .navigationDestination(for: NavigationDestination.self) { destination in
                 switch destination {
-                case .fetcherSearchDemo:
-                    FetcherSearchDemoView()
-                case .errorBoundaryDemo:
-                    ErrorBoundaryDemoView()
-                case .multiQueryDemo:
-                    MultiQueryDemoView()
-                case .queryClientDemo:
-                    QueryClientDemoView()
                 case .pokemonDetail(let pokemon):
                     PokemonDetailView(pokemon: pokemon)
+                default:
+                    Text("Demo removed")
                 }
             }
         }

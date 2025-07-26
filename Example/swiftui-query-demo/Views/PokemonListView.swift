@@ -115,8 +115,7 @@ struct PokemonListView: View {
     
     private var statusColor: Color {
         switch listQuery.status {
-        case .idle: return .gray
-        case .loading: return .blue
+        case .pending: return .gray
         case .success: return .green
         case .error: return .red
         }

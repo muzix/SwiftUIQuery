@@ -97,10 +97,12 @@ public struct Query<F: FetchProtocol>: @preconcurrency DynamicProperty,
 
     /// SwiftUI calls this method when the view updates
     public func update() {
-        // Setup query on first call
-        if !hasSetupQuery {
-            hasSetupQuery = true
-            setupQuery()
+        Task { @MainActor in
+            // Setup query on first call
+            if !hasSetupQuery {
+                hasSetupQuery = true
+                setupQuery()
+            }
         }
     }
 

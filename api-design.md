@@ -20,7 +20,7 @@ const { data, isLoading, error, refetch } = useQuery({
   throwOnError: false,
   refetchInterval: 30000,
   refetchIntervalInBackground: false,
-  refetchOnMount: true,
+  refetchOnAppear: true,
   refetchOnReconnect: true,
   notifyOnChangeProps: ['data', 'error'],
   meta: { source: 'userProfile' }
@@ -86,10 +86,11 @@ InfiniteData<T> = {
    - Multiple observers can share same query via key
    - Updates broadcast to all observers of same query
 
-3. **Refetch Behavior**
-   - **On Mount**: Refetch if no data or stale
-   - **On Window Focus**: Refetch stale queries when window regains focus
-   - **On Reconnect**: Refetch stale queries when network reconnects
+3. **Refetch Behavior** (iOS/SwiftUI Terminology)
+   - **On Appear**: Three modes - always, ifStale, or never refetch when SwiftUI view appears (`.onAppear`)
+   - **On Key Change**: Automatically switch to new query, show cached data immediately, refetch if stale/missing
+   - **On App Foreground**: Refetch stale queries when app becomes active from background (UIApplication notifications)
+   - **On Network Reconnect**: Refetch stale queries when network connectivity is restored (Network framework)
    - **Interval**: Optional periodic refetching
    - **Manual**: Via refetch() function
    - All refetches respect enabled state and stale conditions
@@ -108,6 +109,27 @@ InfiniteData<T> = {
    - Structural sharing to minimize memory usage
 
 ### SwiftUI API Design
+
+#### Dependencies
+
+This implementation requires the Perception library for iOS 16 compatibility:
+
+**Package.swift dependency:**
+```swift
+dependencies: [
+    .package(url: "https://github.com/pointfreeco/swift-perception", from: "1.0.0")
+]
+```
+
+**Import statements:**
+```swift
+import SwiftUI
+import Perception
+
+// For iOS 16 compatibility, we use Perception as a drop-in replacement for @Observable
+// Perception provides the @Perceptible macro which backports @Observable to iOS 16
+// WithPerceptionTracking wrapper ensures proper state tracking in SwiftUI views
+```
 
 #### QueryKey
 
@@ -137,9 +159,9 @@ struct UseQuery<Key: QueryKey, Data: Sendable, Content: View>: View {
     let queryFn: @Sendable () async throws -> Data
     let staleTime: TimeInterval
     let gcTime: TimeInterval
-    let refetchOnWindowFocus: Bool
-    let refetchOnReconnect: Bool
-    let refetchOnMount: RefetchOnMount
+    let refetchOnAppForeground: Bool
+    let refetchOnNetworkReconnect: Bool
+    let refetchOnAppear: RefetchOnAppear
     let retry: RetryConfig
     let retryDelay: RetryDelayFunction?
     let enabled: Bool
@@ -153,16 +175,16 @@ struct UseQuery<Key: QueryKey, Data: Sendable, Content: View>: View {
     let meta: QueryMeta?
     
     @State private var queryObserver: QueryObserver<Key, Data>
-    @ViewBuilder private var content
+    @ViewBuilder private var content: (QueryObserver<Key, Data>) -> Content
     
     init(
         key: Key,
         queryFn: @escaping @Sendable () async throws -> Data,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = 5 * 60, // 5 minutes
-        refetchOnWindowFocus: Bool = true,
-        refetchOnReconnect: Bool = true,
-        refetchOnMount: RefetchOnMount = .always,
+        refetchOnAppForeground: Bool = true,
+        refetchOnNetworkReconnect: Bool = true,
+        refetchOnAppear: RefetchOnAppear = .always,
         retry: RetryConfig = .default,
         retryDelay: RetryDelayFunction? = nil,
         enabled: Bool = true,
@@ -174,15 +196,15 @@ struct UseQuery<Key: QueryKey, Data: Sendable, Content: View>: View {
         initialDataUpdatedAt: Date? = nil,
         throwOnError: Bool = false,
         meta: QueryMeta? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping (QueryObserver<Key, Data>) -> Content
     ) {
         self.key = key
         self.queryFn = queryFn
         self.staleTime = staleTime
         self.gcTime = gcTime
-        self.refetchOnWindowFocus = refetchOnWindowFocus
-        self.refetchOnReconnect = refetchOnReconnect
-        self.refetchOnMount = refetchOnMount
+        self.refetchOnAppForeground = refetchOnAppForeground
+        self.refetchOnNetworkReconnect = refetchOnNetworkReconnect
+        self.refetchOnAppear = refetchOnAppear
         self.retry = retry
         self.retryDelay = retryDelay
         self.enabled = enabled
@@ -194,21 +216,64 @@ struct UseQuery<Key: QueryKey, Data: Sendable, Content: View>: View {
         self.initialDataUpdatedAt = initialDataUpdatedAt
         self.throwOnError = throwOnError
         self.meta = meta
-        self.content = content()
+        self.content = content
+        
+        // Initialize QueryObserver with default client (will be updated in body using Environment)
+        let client = QueryClientProvider.shared.queryClient
+        let options = QueryOptions(
+            queryKey: key,
+            queryFn: queryFn,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchOnWindowFocus: refetchOnWindowFocus,
+            refetchOnReconnect: refetchOnReconnect,
+            refetchOnAppear: refetchOnAppear,
+            retry: retry,
+            retryDelay: retryDelay,
+            enabled: enabled,
+            refetchInterval: refetchInterval,
+            refetchIntervalInBackground: refetchIntervalInBackground,
+            select: select,
+            placeholderData: placeholderData,
+            initialData: initialData,
+            initialDataUpdatedAt: initialDataUpdatedAt,
+            throwOnError: throwOnError,
+            meta: meta
+        )
+        self._queryObserver = State(initialValue: QueryObserver(client: client, options: options))
     }
     
     var body: some View {
-        content
+        WithPerceptionTracking {
+            content(queryObserver)
+        }
         .task {
             // Subscribe to query
             await queryObserver.subscribe()
         }
         .onChange(of: key) { _, newKey in
+            // When queryKey changes, automatically switch to new query and refetch if needed
+            // This matches React Query behavior: show cached data immediately, fetch if stale/missing
             Task {
                 await queryObserver.setOptions(QueryOptions(
                     queryKey: newKey,
                     queryFn: queryFn,
-                    // ... updated options
+                    staleTime: staleTime,
+                    gcTime: gcTime,
+                    refetchOnAppForeground: refetchOnAppForeground,
+                    refetchOnNetworkReconnect: refetchOnNetworkReconnect,
+                    refetchOnAppear: refetchOnAppear,
+                    retry: retry,
+                    retryDelay: retryDelay,
+                    enabled: enabled,
+                    refetchInterval: refetchInterval,
+                    refetchIntervalInBackground: refetchIntervalInBackground,
+                    select: select,
+                    placeholderData: placeholderData,
+                    initialData: initialData,
+                    initialDataUpdatedAt: initialDataUpdatedAt,
+                    throwOnError: throwOnError,
+                    meta: meta
                 ))
             }
         }
@@ -234,9 +299,9 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
     let maxPages: Int?
     let staleTime: TimeInterval
     let gcTime: TimeInterval
-    let refetchOnWindowFocus: Bool
-    let refetchOnReconnect: Bool
-    let refetchOnMount: RefetchOnMount
+    let refetchOnAppForeground: Bool
+    let refetchOnNetworkReconnect: Bool
+    let refetchOnAppear: RefetchOnAppear
     let retry: RetryConfig
     let retryDelay: RetryDelayFunction?
     let enabled: Bool
@@ -250,7 +315,7 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
     let meta: QueryMeta?
     
     @State private var infiniteQueryObserver: InfiniteQueryObserver<Key, Data, PageParam>
-    @ViewBuilder private var content
+    @ViewBuilder private var content: (InfiniteQueryObserver<Key, Data, PageParam>) -> Content
     
     init(
         key: Key,
@@ -261,9 +326,9 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
         maxPages: Int? = nil,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = 5 * 60, // 5 minutes
-        refetchOnWindowFocus: Bool = true,
-        refetchOnReconnect: Bool = true,
-        refetchOnMount: RefetchOnMount = .always,
+        refetchOnAppForeground: Bool = true,
+        refetchOnNetworkReconnect: Bool = true,
+        refetchOnAppear: RefetchOnAppear = .always,
         retry: RetryConfig = .default,
         retryDelay: RetryDelayFunction? = nil,
         enabled: Bool = true,
@@ -275,7 +340,7 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
         initialDataUpdatedAt: Date? = nil,
         throwOnError: Bool = false,
         meta: QueryMeta? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping (InfiniteQueryObserver<Key, Data, PageParam>) -> Content
     ) {
         self.key = key
         self.queryFn = queryFn
@@ -285,9 +350,9 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
         self.maxPages = maxPages
         self.staleTime = staleTime
         self.gcTime = gcTime
-        self.refetchOnWindowFocus = refetchOnWindowFocus
-        self.refetchOnReconnect = refetchOnReconnect
-        self.refetchOnMount = refetchOnMount
+        self.refetchOnAppForeground = refetchOnAppForeground
+        self.refetchOnNetworkReconnect = refetchOnNetworkReconnect
+        self.refetchOnAppear = refetchOnAppear
         self.retry = retry
         self.retryDelay = retryDelay
         self.enabled = enabled
@@ -299,16 +364,48 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
         self.initialDataUpdatedAt = initialDataUpdatedAt
         self.throwOnError = throwOnError
         self.meta = meta
-        self.content = content()
+        self.content = content
+        
+        // Initialize InfiniteQueryObserver with default client (will be updated in body using Environment)
+        let client = QueryClientProvider.shared.queryClient
+        let options = InfiniteQueryOptions(
+            queryKey: key,
+            queryFn: queryFn,
+            initialPageParam: initialPageParam,
+            getNextPageParam: getNextPageParam,
+            getPreviousPageParam: getPreviousPageParam,
+            maxPages: maxPages,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchOnWindowFocus: refetchOnWindowFocus,
+            refetchOnReconnect: refetchOnReconnect,
+            refetchOnAppear: refetchOnAppear,
+            retry: retry,
+            retryDelay: retryDelay,
+            enabled: enabled,
+            refetchInterval: refetchInterval,
+            refetchIntervalInBackground: refetchIntervalInBackground,
+            select: select,
+            placeholderData: placeholderData,
+            initialData: initialData,
+            initialDataUpdatedAt: initialDataUpdatedAt,
+            throwOnError: throwOnError,
+            meta: meta
+        )
+        self._infiniteQueryObserver = State(initialValue: InfiniteQueryObserver(client: client, options: options))
     }
     
     var body: some View {
-        content
+        WithPerceptionTracking {
+            content(infiniteQueryObserver)
+        }
         .task {
             // Subscribe to infinite query
             await infiniteQueryObserver.subscribe()
         }
         .onChange(of: key) { _, newKey in
+            // When queryKey changes, automatically switch to new query and refetch if needed
+            // This matches React Query behavior: show cached data immediately, fetch if stale/missing
             Task {
                 await infiniteQueryObserver.setOptions(InfiniteQueryOptions(
                     queryKey: newKey,
@@ -316,7 +413,23 @@ struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Cont
                     initialPageParam: initialPageParam,
                     getNextPageParam: getNextPageParam,
                     getPreviousPageParam: getPreviousPageParam,
-                    // ... updated options
+                    maxPages: maxPages,
+                    staleTime: staleTime,
+                    gcTime: gcTime,
+                    refetchOnAppForeground: refetchOnAppForeground,
+                    refetchOnNetworkReconnect: refetchOnNetworkReconnect,
+                    refetchOnAppear: refetchOnAppear,
+                    retry: retry,
+                    retryDelay: retryDelay,
+                    enabled: enabled,
+                    refetchInterval: refetchInterval,
+                    refetchIntervalInBackground: refetchIntervalInBackground,
+                    select: select,
+                    placeholderData: placeholderData,
+                    initialData: initialData,
+                    initialDataUpdatedAt: initialDataUpdatedAt,
+                    throwOnError: throwOnError,
+                    meta: meta
                 ))
             }
         }
@@ -352,16 +465,64 @@ enum RetryConfig: Sendable {
 // Retry Delay Function
 typealias RetryDelayFunction = @Sendable (Int, Error) -> TimeInterval
 
-// Refetch on Mount Options
-enum RefetchOnMount: Sendable {
-    case always
-    case ifStale
-    case never
+// Refetch on Appear Options (iOS/SwiftUI equivalent of refetchOnMount)
+enum RefetchOnAppear: Sendable {
+    case always      // Always refetch when view appears
+    case ifStale     // Only refetch if data is stale when view appears
+    case never       // Never automatically refetch on view appear
 }
 
 // Query Meta
 struct QueryMeta: Sendable {
     let data: [String: Any]
+}
+
+// Query Options
+struct QueryOptions<Key: QueryKey, TData: Sendable>: Sendable {
+    let queryKey: Key
+    let queryFn: @Sendable () async throws -> TData
+    let staleTime: TimeInterval
+    let gcTime: TimeInterval
+    let refetchOnAppForeground: Bool
+    let refetchOnNetworkReconnect: Bool
+    let refetchOnAppear: RefetchOnAppear
+    let retry: RetryConfig
+    let retryDelay: RetryDelayFunction?
+    let enabled: Bool
+    let refetchInterval: TimeInterval?
+    let refetchIntervalInBackground: Bool
+    let select: (@Sendable (TData) -> TData)?
+    let placeholderData: (@Sendable (TData?) -> TData)?
+    let initialData: TData?
+    let initialDataUpdatedAt: Date?
+    let throwOnError: Bool
+    let meta: QueryMeta?
+}
+
+// Infinite Query Options
+struct InfiniteQueryOptions<Key: QueryKey, TData: Sendable, TPageParam: Sendable>: Sendable {
+    let queryKey: Key
+    let queryFn: @Sendable (TPageParam) async throws -> TData
+    let initialPageParam: TPageParam
+    let getNextPageParam: @Sendable (TData, [TData], TPageParam, [TPageParam]) -> TPageParam?
+    let getPreviousPageParam: (@Sendable (TData, [TData], TPageParam, [TPageParam]) -> TPageParam?)?
+    let maxPages: Int?
+    let staleTime: TimeInterval
+    let gcTime: TimeInterval
+    let refetchOnAppForeground: Bool
+    let refetchOnNetworkReconnect: Bool
+    let refetchOnAppear: RefetchOnAppear
+    let retry: RetryConfig
+    let retryDelay: RetryDelayFunction?
+    let enabled: Bool
+    let refetchInterval: TimeInterval?
+    let refetchIntervalInBackground: Bool
+    let select: (@Sendable (InfiniteData<TData, TPageParam>) -> InfiniteData<TData, TPageParam>)?
+    let placeholderData: (@Sendable (InfiniteData<TData, TPageParam>?) -> InfiniteData<TData, TPageParam>)?
+    let initialData: InfiniteData<TData, TPageParam>?
+    let initialDataUpdatedAt: Date?
+    let throwOnError: Bool
+    let meta: QueryMeta?
 }
 
 // Infinite Query Data Structure
@@ -386,10 +547,53 @@ enum FetchStatus: Sendable {
 }
 ```
 
+#### QueryClientProvider
+
+```swift
+// Query Client Provider for dependency injection
+@Perceptible
+final class QueryClientProvider: Sendable {
+    static let shared = QueryClientProvider()
+    let queryClient: QueryClient
+    
+    private init() {
+        self.queryClient = QueryClient()
+    }
+}
+
+// SwiftUI Environment Key
+struct QueryClientKey: EnvironmentKey {
+    static let defaultValue = QueryClientProvider.shared.queryClient
+}
+
+extension EnvironmentValues {
+    var queryClient: QueryClient {
+        get { self[QueryClientKey.self] }
+        set { self[QueryClientKey.self] = newValue }
+    }
+}
+
+// Provider View for SwiftUI
+struct QueryClientProviderView<Content: View>: View {
+    let queryClient: QueryClient
+    let content: Content
+    
+    init(queryClient: QueryClient = QueryClient(), @ViewBuilder content: () -> Content) {
+        self.queryClient = queryClient
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+            .environment(\.queryClient, queryClient)
+    }
+}
+```
+
 #### QueryClient
 
 ```swift
-@Observable
+@Perceptible
 final class QueryClient: Sendable {
     let queryCache: QueryCache
     let mutationCache: MutationCache
@@ -467,7 +671,7 @@ final class QueryClient: Sendable {
 #### QueryCache
 
 ```swift
-@Observable
+@Perceptible
 final class QueryCache: Sendable {
     private let queries = NSCache<NSString, AnyQuery>()
     private let queriesMap = Mutex<[String: AnyQuery]>()
@@ -530,7 +734,7 @@ final class QueryCache: Sendable {
 #### Query
 
 ```swift
-@Observable
+@Perceptible
 final class Query<Key: QueryKey, TData: Sendable>: Sendable {
     let queryKey: Key
     let queryHash: String
@@ -567,6 +771,9 @@ final class Query<Key: QueryKey, TData: Sendable>: Sendable {
         if let initialData = options.initialData {
             setData(data: initialData, updatedAt: options.initialDataUpdatedAt ?? Date())
         }
+        
+        // Set up refetch timer if configured
+        updateRefetchTimer()
     }
     
     func addObserver(_ identifier: QueryObserverIdentifier) {
@@ -646,13 +853,44 @@ final class Query<Key: QueryKey, TData: Sendable>: Sendable {
         guard let dataUpdatedAt = dataUpdatedAt else { return true }
         return date.timeIntervalSince(dataUpdatedAt) > options.staleTime
     }
+    
+    func updateOptions(_ newOptions: QueryOptions<Key, TData>) {
+        // Update query options without changing the key
+        options = newOptions
+        
+        // Update any timers based on new options
+        updateRefetchTimer()
+    }
+    
+    private func updateRefetchTimer() {
+        refetchTimer?.invalidate()
+        refetchTimer = nil
+        
+        guard let interval = options.refetchInterval, interval > 0 else { return }
+        
+        refetchTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { [weak self] in
+                guard let self = self else { return }
+                // Only refetch if enabled and in foreground (unless background refetch is enabled)
+                if options.enabled && (options.refetchIntervalInBackground || !isInBackground()) {
+                    try? await self.fetch()
+                }
+            }
+        }
+    }
+    
+    private func isInBackground() -> Bool {
+        // This should be implemented based on app state
+        // For now, return false (assuming foreground)
+        return false
+    }
 }
 ```
 
 #### QueryObserver
 
 ```swift
-@Observable
+@Perceptible
 final class QueryObserver<Key: QueryKey, TData: Sendable>: Sendable {
     private let client: QueryClient
     private var options: QueryOptions<Key, TData>
@@ -680,11 +918,11 @@ final class QueryObserver<Key: QueryKey, TData: Sendable>: Sendable {
         query = client.ensureQuery(options: options)
         query?.addObserver(identifier)
         
-        // Initial fetch if needed
-        await executeFetch()
-        
-        // Update state from query
+        // Immediately update state to reflect current query state (show cached data if available)
         updateState()
+        
+        // Then fetch if needed (this matches React Query's behavior of showing cached data immediately)
+        await executeFetch()
     }
     
     func unsubscribe() async {
@@ -699,6 +937,11 @@ final class QueryObserver<Key: QueryKey, TData: Sendable>: Sendable {
         if oldOptions.queryKey != newOptions.queryKey {
             await unsubscribe()
             await subscribe()
+        } else {
+            // If only options changed (not key), update the query options
+            query?.updateOptions(newOptions)
+            // Re-evaluate fetch conditions with new options
+            await executeFetch()
         }
     }
     
@@ -710,17 +953,32 @@ final class QueryObserver<Key: QueryKey, TData: Sendable>: Sendable {
     private func executeFetch() async {
         guard let query = query else { return }
         
-        // Determine if we should fetch
+        // Determine if we should fetch based on query state and options
+        let hasNoData: Bool
+        switch query.state {
+        case .success:
+            hasNoData = false
+        default:
+            hasNoData = true
+        }
+        let isStale = query.isStale()
+        
         let shouldFetch = options.enabled && (
-            options.refetchOnMount == .always ||
-            (options.refetchOnMount == .ifStale && query.isStale())
+            // Always fetch if no data exists
+            hasNoData ||
+            // Fetch based on refetchOnAppear setting and staleness
+            (options.refetchOnAppear == .always) ||
+            (options.refetchOnAppear == .ifStale && isStale)
         )
         
         if shouldFetch {
             do {
                 _ = try await query.fetch()
+                // Update state after fetch completes
+                updateState()
             } catch {
-                // Error is handled in query state
+                // Error is handled in query state, but update UI state
+                updateState()
             }
         }
     }
@@ -776,7 +1034,7 @@ enum QueryError: Error {
 #### InfiniteQueryObserver
 
 ```swift
-@Observable
+@Perceptible
 final class InfiniteQueryObserver<Key: QueryKey, TData: Sendable, TPageParam: Sendable>: Sendable {
     private let client: QueryClient
     private var options: InfiniteQueryOptions<Key, TData, TPageParam>
@@ -821,6 +1079,9 @@ final class InfiniteQueryObserver<Key: QueryKey, TData: Sendable, TPageParam: Se
 #### Basic Query
 
 ```swift
+import SwiftUI
+import Perception
+
 struct UserProfileView: View {
     let userId: String
     
@@ -829,6 +1090,7 @@ struct UserProfileView: View {
             key: QueryKeys.user(id: userId),
             queryFn: { try await fetchUser(userId) }
         ) { observer in
+            // Perception automatically tracks observer state changes
             if observer.isLoading {
                 ProgressView()
             } else if let error = observer.error {
@@ -907,6 +1169,63 @@ struct SettingsView: View {
             }
         }
     }
+}
+```
+
+### iOS-Specific Lifecycle Monitoring
+
+```swift
+import Network
+import UIKit
+
+// App Foreground/Background Monitoring
+@Perceptible
+final class AppLifecycleMonitor: Sendable {
+    private(set) var isAppActive: Bool = true
+    
+    init() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.isAppActive = true
+            self?.onAppForeground?()
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.isAppActive = false
+        }
+    }
+    
+    var onAppForeground: (() -> Void)?
+}
+
+// Network Connectivity Monitoring
+@Perceptible
+final class NetworkMonitor: Sendable {
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "NetworkMonitor")
+    private(set) var isConnected: Bool = true
+    
+    init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let wasConnected = self?.isConnected ?? false
+            self?.isConnected = path.status == .satisfied
+            
+            // Trigger reconnect callback if we just reconnected
+            if !wasConnected && path.status == .satisfied {
+                self?.onNetworkReconnect?()
+            }
+        }
+        monitor.start(queue: queue)
+    }
+    
+    var onNetworkReconnect: (() -> Void)?
 }
 ```
 

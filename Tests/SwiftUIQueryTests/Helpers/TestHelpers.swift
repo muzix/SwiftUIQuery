@@ -25,7 +25,7 @@ enum TestQueryKey: QueryKey, Sendable {
     case post(id: String)
     case userPosts(userId: String)
 
-    var stringValue: String {
+    var queryHash: String {
         switch self {
         case let .user(id):
             return "user-\(id)"
@@ -72,7 +72,7 @@ final class MockNetworkClient: @unchecked Sendable {
 
         // Return response if available
         guard let response = responses[key] as? T else {
-            throw TestError.noResponse
+            throw MockError.noResponse
         }
 
         return response
@@ -88,7 +88,7 @@ final class MockNetworkClient: @unchecked Sendable {
 
 // MARK: - Test Errors
 
-enum TestError: Error, Equatable, CustomStringConvertible {
+enum MockError: Error, Equatable, CustomStringConvertible {
     case noResponse
     case networkError
     case serverError(code: Int)

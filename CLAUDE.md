@@ -116,3 +116,8 @@ From the official documentation:
 ## Development Best Practices
 
 - When implementing swift version of react query, always looks for latest implementation details from react query. Behavior of enum, public API should be kept closest as much as possible
+
+## Development Workflow
+
+- Remember to add/update unit tests after each task
+- After each task, run make format and make lint / make lint-fix and fix issues if needed. Then commit code.

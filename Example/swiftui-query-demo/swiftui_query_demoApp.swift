@@ -10,16 +10,9 @@ import SwiftUIQuery
 
 @main
 struct SwiftUIQueryDemoApp: App {
-    // Create a global QueryClient instance
-    let queryClient = QueryClient(defaultOptions: QueryOptions(
-        staleTime: .seconds(30), // 30 seconds default stale time
-        refetchOnAppear: .ifStale
-    ))
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .queryClient(queryClient) // Provide QueryClient to the entire app
         }
     }
 }

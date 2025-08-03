@@ -401,7 +401,7 @@ struct QueryObserverResultTests {
         testScenario(.success, .fetching, pending: false, success: true, error: false, loading: false, refetching: true)
         testScenario(.success, .paused, pending: false, success: true, error: false, loading: false, refetching: false)
         testScenario(.error, .idle, pending: false, success: false, error: true, loading: false, refetching: false)
-        testScenario(.error, .fetching, pending: false, success: false, error: true, loading: false, refetching: false)
+        testScenario(.error, .fetching, pending: false, success: false, error: true, loading: false, refetching: true)
         testScenario(.error, .paused, pending: false, success: false, error: true, loading: false, refetching: false)
     }
 

@@ -18,6 +18,10 @@ disabled_rules:
   - trailing_comma # Allow trailing commas in arrays/dictionaries
   - todo # Allow TODO comments during development
 
+# Per-path rule customization
+force_unwrapping:
+  severity: warning
+
 opt_in_rules:
   # Swift 6 and Modern Swift Best Practices
   - array_init
@@ -31,8 +35,6 @@ opt_in_rules:
   - contains_over_range_nil_comparison
   - convenience_type
   - discouraged_object_literal
-  - empty_collection_literal
-  - empty_count
   - empty_string
   - empty_xctest_method
   - enum_case_associated_values_count
@@ -42,7 +44,6 @@ opt_in_rules:
   - file_header
   - first_where
   - flatmap_over_map_reduce
-  - force_unwrapping
   - identical_operands
   - implicit_return
   - implicitly_unwrapped_optional

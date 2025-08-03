@@ -452,6 +452,7 @@ public struct InfiniteData<TData: Sendable, TPageParam: Sendable & Codable>: Sen
 
 /// Complete state of a query instance
 /// Equivalent to TanStack Query's QueryState
+/// This is the single source of truth for query state - QueryObserverResult computes derived properties from this
 public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: Sendable {
     /// The actual data returned by the query function
     public let data: TData?
@@ -584,12 +585,41 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
             fetchStatus: fetchStatus
         )
     }
+
+    // MARK: - Computed Convenience Properties
+
+    /// Whether there is data available
+    public var hasData: Bool { data != nil }
+
+    /// Whether there is an error
+    public var hasError: Bool { error != nil }
+
+    /// Whether the query is currently fetching
+    public var isFetching: Bool { fetchStatus == .fetching }
+
+    /// Whether the query is paused
+    public var isPaused: Bool { fetchStatus == .paused }
+
+    /// Whether the query is idle (not fetching)
+    public var isIdle: Bool { fetchStatus == .idle }
+
+    /// Convert dataUpdatedAt to Date
+    public var dataUpdatedDate: Date? {
+        guard dataUpdatedAt > 0 else { return nil }
+        return Date(timeIntervalSince1970: Double(dataUpdatedAt) / 1000.0)
+    }
+
+    /// Convert errorUpdatedAt to Date
+    public var errorUpdatedDate: Date? {
+        guard errorUpdatedAt > 0 else { return nil }
+        return Date(timeIntervalSince1970: Double(errorUpdatedAt) / 1000.0)
+    }
 }
 
 // MARK: - Query Error Types
 
 /// Standard error type for query operations
-public struct QueryError: Error, Sendable, Codable {
+public struct QueryError: Error, Sendable, Codable, Equatable {
     public let message: String
     public let code: String?
     public let underlyingError: String?
@@ -676,8 +706,9 @@ public typealias QueryCacheListener = @Sendable (QueryCacheEvent) -> Void
 
 /// Thread-safe cache for storing and managing query instances
 /// Equivalent to TanStack Query's QueryCache with Observer pattern
+/// Note: @MainActor is currently required because AnyQuery protocol is @MainActor
+/// In a future refactor, we could make QueryCache truly thread-safe with an actor-based design
 @MainActor
-@Perceptible
 public final class QueryCache {
     /// Internal dictionary storing queries by their hash
     private var queries: [String: AnyQuery] = [:]

@@ -6,77 +6,77 @@ import Perception
 
 // MARK: - Query Observer Result
 
-/// Result object containing all query state and methods
+/// Result object containing all query state and computed properties
 /// Equivalent to TanStack Query's QueryObserverResult
+/// This is now a computed view of QueryState rather than a separate data structure
 public struct QueryObserverResult<TData: Sendable> {
-    /// The actual data returned by the query
-    public let data: TData?
-    /// The error if the query failed
-    public let error: QueryError?
-    /// Whether the query is currently loading for the first time
-    public let isLoading: Bool
-    /// Whether the query is currently fetching (including background refetch)
-    public let isFetching: Bool
-    /// Whether the query is successful and has data
-    public let isSuccess: Bool
-    /// Whether the query failed with an error
-    public let isError: Bool
-    /// Whether the query is in pending state (no data yet)
-    public let isPending: Bool
-    /// Whether the query is currently refetching in the background
-    public let isRefetching: Bool
-    /// Whether the query data is stale
-    public let isStale: Bool
-    /// Whether the query is paused due to being offline
-    public let isPaused: Bool
-    /// Number of times the query has been fetched
-    public let dataUpdateCount: Int
-    /// Number of times the query has failed
-    public let errorUpdateCount: Int
-    /// Number of consecutive failures
-    public let failureCount: Int
-    /// Reason for the last failure
-    public let failureReason: QueryError?
-    /// Timestamp when data was last updated
-    public let dataUpdatedAt: Date?
-    /// Timestamp when error was last updated
-    public let errorUpdatedAt: Date?
+    /// The underlying query state
+    private let queryState: QueryState<TData, QueryError>
+    /// Whether the query is stale (computed from observer context)
+    private let _isStale: Bool
 
-    init(
-        data: TData? = nil,
-        error: QueryError? = nil,
-        isLoading: Bool = false,
-        isFetching: Bool = false,
-        isSuccess: Bool = false,
-        isError: Bool = false,
-        isPending: Bool = true,
-        isRefetching: Bool = false,
-        isStale: Bool = true,
-        isPaused: Bool = false,
-        dataUpdateCount: Int = 0,
-        errorUpdateCount: Int = 0,
-        failureCount: Int = 0,
-        failureReason: QueryError? = nil,
-        dataUpdatedAt: Date? = nil,
-        errorUpdatedAt: Date? = nil
-    ) {
-        self.data = data
-        self.error = error
-        self.isLoading = isLoading
-        self.isFetching = isFetching
-        self.isSuccess = isSuccess
-        self.isError = isError
-        self.isPending = isPending
-        self.isRefetching = isRefetching
-        self.isStale = isStale
-        self.isPaused = isPaused
-        self.dataUpdateCount = dataUpdateCount
-        self.errorUpdateCount = errorUpdateCount
-        self.failureCount = failureCount
-        self.failureReason = failureReason
-        self.dataUpdatedAt = dataUpdatedAt
-        self.errorUpdatedAt = errorUpdatedAt
+    init(queryState: QueryState<TData, QueryError>, isStale: Bool) {
+        self.queryState = queryState
+        self._isStale = isStale
     }
+
+    // MARK: - Data Properties (direct from QueryState)
+
+    /// The actual data returned by the query
+    public var data: TData? { queryState.data }
+
+    /// The error if the query failed
+    public var error: QueryError? { queryState.error }
+
+    /// Number of times the query has been fetched
+    public var dataUpdateCount: Int { queryState.dataUpdateCount }
+
+    /// Number of times the query has failed
+    public var errorUpdateCount: Int { queryState.errorUpdateCount }
+
+    /// Number of consecutive failures
+    public var failureCount: Int { queryState.fetchFailureCount }
+
+    /// Reason for the last failure
+    public var failureReason: QueryError? { queryState.fetchFailureReason }
+
+    /// Timestamp when data was last updated
+    public var dataUpdatedAt: Date? {
+        guard queryState.dataUpdatedAt > 0 else { return nil }
+        return Date(timeIntervalSince1970: Double(queryState.dataUpdatedAt) / 1000.0)
+    }
+
+    /// Timestamp when error was last updated
+    public var errorUpdatedAt: Date? {
+        guard queryState.errorUpdatedAt > 0 else { return nil }
+        return Date(timeIntervalSince1970: Double(queryState.errorUpdatedAt) / 1000.0)
+    }
+
+    // MARK: - Computed Status Properties
+
+    /// Whether the query is currently fetching (including background refetch)
+    public var isFetching: Bool { queryState.fetchStatus == .fetching }
+
+    /// Whether the query is paused due to being offline
+    public var isPaused: Bool { queryState.fetchStatus == .paused }
+
+    /// Whether the query is in pending state (no data yet)
+    public var isPending: Bool { queryState.status == .pending }
+
+    /// Whether the query is successful and has data
+    public var isSuccess: Bool { queryState.status == .success }
+
+    /// Whether the query failed with an error
+    public var isError: Bool { queryState.status == .error }
+
+    /// Whether the query is currently loading for the first time
+    public var isLoading: Bool { isPending && isFetching }
+
+    /// Whether the query is currently refetching in the background
+    public var isRefetching: Bool { isFetching && !isPending }
+
+    /// Whether the query data is stale
+    public var isStale: Bool { _isStale }
 }
 
 // MARK: - Query Observer Class
@@ -156,7 +156,11 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     public init(client: QueryClient, options: QueryOptions<TData, QueryError, TKey>) {
         self.client = client
         self.options = options
-        self.result = QueryObserverResult<TData>()
+        // Initialize with empty state
+        self.result = QueryObserverResult<TData>(
+            queryState: QueryState<TData, QueryError>.defaultState(),
+            isStale: true
+        )
 
         // Initialize with query from client
         updateQuery()
@@ -301,45 +305,20 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     /// Update the result based on current query state
     private func updateResult() {
         guard let query = currentQuery else {
-            result = QueryObserverResult<TData>()
+            result = QueryObserverResult<TData>(
+                queryState: QueryState<TData, QueryError>.defaultState(),
+                isStale: true
+            )
             return
         }
 
         let queryState = query.state
-        let fetchStatus = queryState.fetchStatus
-
-        // Calculate derived state
-        let hasData = queryState.data != nil
-        let hasError = queryState.error != nil
-
-        let isLoading = fetchStatus == .fetching && !hasData
-        let isFetching = fetchStatus == .fetching
-        let isPending = !hasData && !hasError
-        let isSuccess = hasData && !hasError
-        let isError = hasError
-        let isRefetching = isFetching && hasData
         let isStale = query.isStale
-        let isPaused = fetchStatus == .paused
 
-        // Create new result
+        // Create new result - all computed properties are handled by QueryObserverResult
         result = QueryObserverResult(
-            data: queryState.data,
-            error: queryState.error,
-            isLoading: isLoading,
-            isFetching: isFetching,
-            isSuccess: isSuccess,
-            isError: isError,
-            isPending: isPending,
-            isRefetching: isRefetching,
-            isStale: isStale,
-            isPaused: isPaused,
-            dataUpdateCount: queryState.dataUpdateCount,
-            errorUpdateCount: queryState.errorUpdateCount,
-            failureCount: queryState.fetchFailureCount,
-            failureReason: queryState.fetchFailureReason,
-            dataUpdatedAt: query.lastUpdated,
-            errorUpdatedAt: queryState
-                .errorUpdatedAt > 0 ? Date(timeIntervalSince1970: Double(queryState.errorUpdatedAt) / 1000.0) : nil
+            queryState: queryState,
+            isStale: isStale
         )
     }
 

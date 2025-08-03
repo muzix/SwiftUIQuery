@@ -670,9 +670,71 @@ final class QueryClient: Sendable {
 
 #### QueryCache
 
+**Note**: QueryCache does NOT use `@Perceptible` as it's an internal storage mechanism not directly observed by SwiftUI views. Reactive updates flow through QueryObserver instances instead.
+
+**Note**: QueryCache currently uses `@MainActor` because the `AnyQuery` protocol is `@MainActor`. In an ideal architecture, QueryCache would be thread-safe using an actor-based design, but this requires refactoring the entire type system.
+
+## Why QueryCache is annotated with @MainActor
+
+The `@MainActor` annotation on `QueryCache` is **not ideal** and exists due to current architectural constraints rather than by design choice.
+
+### Current Reality (Why @MainActor is needed now):
+
+1. **AnyQuery Protocol Constraint**: The `AnyQuery` protocol is marked `@MainActor`, requiring all conforming types and their consumers to run on the main thread.
+
+2. **Type System Dependencies**: Since QueryCache stores and manipulates `AnyQuery` instances, accessing properties like `query.queryHash` requires main actor isolation, forcing QueryCache to also be `@MainActor`.
+
+3. **Sendable Conflicts**: Without `@MainActor`, making QueryCache `Sendable` would require:
+   - Making all stored properties immutable or thread-safe
+   - Using actors or proper synchronization primitives  
+   - Refactoring the entire query type hierarchy
+
+### Ideal Architecture (What it should be):
+
+Looking at TanStack Query's original design, `QueryCache` should be thread-safe storage without main actor constraints:
+
 ```swift
-@Perceptible
-final class QueryCache: Sendable {
+// Ideal: Thread-safe storage without main actor constraint
+actor QueryCacheStorage {
+    private var queries: [String: AnyQuery] = [:]
+    // ... thread-safe operations
+}
+
+// No @MainActor needed - just a coordination layer
+public final class QueryCache {
+    private let storage = QueryCacheStorage()
+    // ... public API that delegates to actor
+}
+```
+
+### The Trade-off:
+
+- **Current approach**: Simple to implement, works correctly, but forces cache operations to main thread
+- **Ideal approach**: Better performance, matches TanStack Query architecture, but requires significant refactoring
+
+### Performance Impact:
+
+In practice, the performance impact is minimal because:
+- Cache operations are typically fast (dictionary lookups)
+- Most query operations already happen on the main thread via QueryObserver
+- The bottleneck is usually network requests, not cache access
+
+### Future Refactoring Path:
+
+The `@MainActor` annotation is a **necessary compromise** given the current type system design. It ensures thread safety and Swift 6 compliance while maintaining a working implementation that matches TanStack Query's behavior.
+
+To remove `@MainActor` from QueryCache in the future, we would need to:
+1. Make `AnyQuery` not require main actor isolation
+2. Use actor-based storage for thread safety
+3. Restructure the type hierarchy to be more concurrent-friendly
+
+For now, the documentation correctly notes this as a current limitation rather than an intended design choice.
+
+```swift
+// Note: No @Perceptible annotation - QueryCache is internal storage, not directly observable
+// @MainActor currently required due to AnyQuery protocol constraint
+@MainActor
+final class QueryCache {
     private let queries = NSCache<NSString, AnyQuery>()
     private let queriesMap = Mutex<[String: AnyQuery]>()
     

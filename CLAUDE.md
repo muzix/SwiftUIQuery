@@ -89,9 +89,9 @@ swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilt
 ```
 
 **IMPORTANT TESTING RULES:**
-- **Only run `swift test` when you have made changes to test code**
-- If you're implementing features without updating tests, do NOT run `swift test`
 - Use `swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilts` to verify compilation after implementation changes
+- **Use `swift test` to verify unit tests after implementation changes.**
+- **After each implementation changes, please update/write new unit tests to test existing/new code.**
 - Never run `xcodebuild` commands on .xcodeproj files
 - The Example/ directory contains Xcode projects for manual testing only
 - Only use swift test and swift build commands for automated verification

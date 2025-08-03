@@ -5,10 +5,10 @@ import PackageDescription
 let package = Package(
     name: "SwiftUIQuery",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
-        .tvOS(.v17),
-        .watchOS(.v10)
+        .iOS(.v16),
+        .macOS(.v13),
+        .tvOS(.v16),
+        .watchOS(.v9)
     ],
     products: [
         .library(
@@ -17,11 +17,15 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "https://github.com/pointfreeco/swift-perception", from: "1.0.0"),
         .package(url: "https://github.com/nalexn/ViewInspector", from: "0.9.0"),
     ],
     targets: [
         .target(
             name: "SwiftUIQuery",
+            dependencies: [
+                .product(name: "Perception", package: "swift-perception")
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

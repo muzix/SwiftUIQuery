@@ -2,6 +2,7 @@
 // Foundational Types and Protocols
 
 import Foundation
+import Perception
 
 // MARK: - QueryKey Protocol
 
@@ -222,16 +223,16 @@ public struct AnyCodable: Sendable, Codable, Hashable {
 // MARK: - Query Function Types
 
 /// Function signature for query functions
-public typealias QueryFunction<TData: Sendable & Codable, TKey: QueryKey> = @Sendable (TKey) async throws -> TData
+public typealias QueryFunction<TData: Sendable, TKey: QueryKey> = @Sendable (TKey) async throws -> TData
 
 /// Function signature for initial data providers
-public typealias InitialDataFunction<TData: Sendable & Codable> = @Sendable () -> TData?
+public typealias InitialDataFunction<TData: Sendable> = @Sendable () -> TData?
 
 // MARK: - Query Options
 
 /// Configuration options for queries
 /// Equivalent to TanStack Query's QueryOptions
-public struct QueryOptions<TData: Sendable & Codable, TError: Error & Sendable & Codable, TKey: QueryKey>: Sendable {
+public struct QueryOptions<TData: Sendable, TError: Error & Sendable & Codable, TKey: QueryKey>: Sendable {
     /// The query key that uniquely identifies this query
     public let queryKey: TKey
     /// The function that will be called to fetch data
@@ -293,24 +294,24 @@ public struct QueryOptions<TData: Sendable & Codable, TError: Error & Sendable &
 // MARK: - Infinite Query Types
 
 /// Function signature for infinite query functions
-public typealias InfiniteQueryFunction<TData: Sendable & Codable, TKey: QueryKey, TPageParam: Sendable & Codable> =
+public typealias InfiniteQueryFunction<TData: Sendable, TKey: QueryKey, TPageParam: Sendable & Codable> =
     @Sendable (
         TKey,
         TPageParam?
     ) async throws -> TData
 
 /// Function to get the next page parameter
-public typealias GetNextPageParamFunction<TData: Sendable & Codable, TPageParam: Sendable & Codable> =
+public typealias GetNextPageParamFunction<TData: Sendable, TPageParam: Sendable & Codable> =
     @Sendable ([TData]) -> TPageParam?
 
 /// Function to get the previous page parameter
-public typealias GetPreviousPageParamFunction<TData: Sendable & Codable, TPageParam: Sendable & Codable> =
+public typealias GetPreviousPageParamFunction<TData: Sendable, TPageParam: Sendable & Codable> =
     @Sendable ([TData]) -> TPageParam?
 
 /// Configuration options for infinite queries
 /// Equivalent to TanStack Query's InfiniteQueryOptions
 public struct InfiniteQueryOptions<
-    TData: Sendable & Codable,
+    TData: Sendable,
     TError: Error & Sendable & Codable,
     TKey: QueryKey,
     TPageParam: Sendable & Codable
@@ -383,7 +384,7 @@ public struct InfiniteQueryOptions<
 
 /// Container for infinite query data with pagination support
 /// Equivalent to TanStack Query's InfiniteData
-public struct InfiniteData<TData: Sendable & Codable, TPageParam: Sendable & Codable>: Sendable, Codable {
+public struct InfiniteData<TData: Sendable, TPageParam: Sendable & Codable>: Sendable {
     /// Array of pages containing the actual data
     public let pages: [TData]
     /// Array of page parameters used to fetch each page
@@ -451,7 +452,7 @@ public struct InfiniteData<TData: Sendable & Codable, TPageParam: Sendable & Cod
 
 /// Complete state of a query instance
 /// Equivalent to TanStack Query's QueryState
-public struct QueryState<TData: Sendable & Codable, TError: Error & Sendable & Codable>: Sendable, Codable {
+public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: Sendable {
     /// The actual data returned by the query function
     public let data: TData?
     /// Number of times data has been updated
@@ -676,7 +677,7 @@ public typealias QueryCacheListener = @Sendable (QueryCacheEvent) -> Void
 /// Thread-safe cache for storing and managing query instances
 /// Equivalent to TanStack Query's QueryCache with Observer pattern
 @MainActor
-@Observable
+@Perceptible
 public final class QueryCache {
     /// Internal dictionary storing queries by their hash
     private var queries: [String: AnyQuery] = [:]
@@ -787,6 +788,7 @@ public final class QueryCache {
 }
 
 /// Type-erased query wrapper for storing different query types in the same cache
+@MainActor
 public protocol AnyQuery {
     var queryHash: String { get }
     var isStale: Bool { get }

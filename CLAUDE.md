@@ -60,14 +60,14 @@ The `Documentation` folder contains the complete TanStack Query source code. Whe
 
 ### Key Requirements
 - Swift 6 strict concurrency mode compatible
-- Built with Swift Observation framework (@Observable)
-- Zero external dependencies
+- Built with Perception library (@Perceptible) for iOS 16+ compatibility
+- Minimal external dependencies (only Perception for state observation)
 - Match TanStack Query's architecture and behavior
 
 ### Development Checklist
 - [ ] Referenced corresponding TanStack Query implementation
 - [ ] All types are Sendable
-- [ ] Using @Observable instead of ObservableObject
+- [ ] Using @Perceptible instead of @Observable for iOS 16+ compatibility
 - [ ] Matches TanStack Query behavior
 - [ ] Full DocC documentation
 - [ ] Unit tests for all public APIs
@@ -85,13 +85,13 @@ The `Documentation` folder contains the complete TanStack Query source code. Whe
 When implementing features, run these commands:
 ```bash
 swift test
-swift build -Xswiftc -strict-concurrency=complete
+swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilts
 ```
 
 **IMPORTANT TESTING RULES:**
 - **Only run `swift test` when you have made changes to test code**
 - If you're implementing features without updating tests, do NOT run `swift test`
-- Use `swift build` to verify compilation after implementation changes
+- Use `swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilts` to verify compilation after implementation changes
 - Never run `xcodebuild` commands on .xcodeproj files
 - The Example/ directory contains Xcode projects for manual testing only
 - Only use swift test and swift build commands for automated verification
@@ -121,3 +121,5 @@ From the official documentation:
 
 - Remember to add/update unit tests after each task
 - After each task, run make format and make lint / make lint-fix and fix issues if needed. Then commit code.
+- Components should be placed in each separated file. Don't write everything into one big file!
+- After each tasks, update api-design, roadmap checklist and feature parity if needs.

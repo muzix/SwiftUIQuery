@@ -27,58 +27,87 @@ const { data, isLoading, error, refetch } = useQuery({
 })
 ```
 
+### How caching works in details of React useQuery
+
+#### Cache Key Structure
+- Query keys are hashed using JSON.stringify with sorted object keys for consistent hashing
+- The hash serves as the unique identifier in QueryCache Map
+- Supports arrays, objects, primitives - anything JSON serializable
+
+#### Stale-While-Revalidate Strategy
+- **Default behavior**: Queries are stale immediately after fetching (staleTime: 0)
+- Shows cached data immediately while refetching in background
+- Three states: fresh (within staleTime), stale (beyond staleTime), or static (never stale)
+- Stale calculation: `isStale = (Date.now() - dataUpdatedAt) > staleTime`
+
+#### Cache Persistence & Garbage Collection
+- Queries remain in cache even when all observers unmount
+- Garbage collection triggers after `gcTime` (default 5 minutes) of inactivity
+- Cache entries removed when no observers and fetchStatus is 'idle'
+
+#### Structural Sharing
+- Prevents unnecessary re-renders by maintaining referential equality
+- Recursively compares old and new data, returns old reference if unchanged
+- Only creates new objects/arrays for changed portions
+- Can be disabled or customized via options
+
+### How caching works in details of React useInfiniteQuery
+
+#### Page Storage Structure
+```typescript
+InfiniteData<T> = {
+  pages: T[],        // Array of page data
+  pageParams: unknown[] // Corresponding page parameters
+}
+```
+
+#### Page Fetching Logic
+- **Initial page**: Uses `initialPageParam` for first fetch
+- **Next page**: Determined by `getNextPageParam(lastPage, allPages, lastPageParam, allPageParams)`
+- **Previous page**: Determined by `getPreviousPageParam(firstPage, allPages, firstPageParam, allPageParams)`
+- Fetching stops when page param functions return `null` or `undefined`
+
+#### Page Direction Management
+- `fetchNextPage()` adds pages to end of array (forward direction)
+- `fetchPreviousPage()` adds pages to beginning of array (backward direction)
+- Optional `maxPages` limit with automatic page removal based on direction
+
+### Key Behaviors to Implement for UseQuery and UseInfiniteQuery
+
+1. **Page Management** (InfiniteQuery specific)
+   - Store pages as ordered array with corresponding pageParams
+   - Support bi-directional fetching (next/previous)
+   - Implement page limit with intelligent removal strategy
+   - Maintain page fetch direction in query metadata
+
+2. **State Isolation**
+   - Each unique query key creates separate Query instance
+   - Queries with same queryFn but different keys have isolated state
+   - Multiple observers can share same query via key
+   - Updates broadcast to all observers of same query
+
+3. **Refetch Behavior**
+   - **On Mount**: Refetch if no data or stale
+   - **On Window Focus**: Refetch stale queries when window regains focus
+   - **On Reconnect**: Refetch stale queries when network reconnects
+   - **Interval**: Optional periodic refetching
+   - **Manual**: Via refetch() function
+   - All refetches respect enabled state and stale conditions
+
+4. **Page Determination** (InfiniteQuery specific)
+   - `getNextPageParam` determines next page parameter from current data
+   - `getPreviousPageParam` determines previous page parameter
+   - Return `null`/`undefined` to signal no more pages
+   - Page params stored alongside page data for consistency
+
+5. **Concurrency & Memory**
+   - Fetch deduplication: Multiple observers share same fetch promise
+   - Background refetching for stale data
+   - Automatic retry with exponential backoff for failures
+   - Garbage collection for inactive queries
+   - Structural sharing to minimize memory usage
+
 ### SwiftUI API Design
-
-#### Property Wrapper with Initializer
-
-struct UserView {
-    @Query(
-        key: [FetchUserQuery(userId: "userId")],
-        fetch: { try await apiClient.fetch(FetchUserQuery(userId: "userId")) },
-        options: .init(
-            select: { data in data.fragments.userFragment },
-            placeholderData: { previousData in previousData },
-            initialData: cachedUser,
-            staleTime: .minutes(5),
-            retry: 3,
-            reportOnError: .always,
-            refetchInterval: .seconds(30),
-            refetchIntervalInBackground: .minutes(1),
-            refetchOnReconnect: .ifStale,
-            refetchOnAppear: .ifStale
-        )
-    ) var userQuery
-}
-
-#### Can be initialized in view init.
-
-enum CustomQueryKey: QueryKey {
-    case fetchUserQuery(userId: String)
-}
-
-struct UserView {
-    let userId: String
-    @Query<User> var userQuery
-
-    init(userId: String) {
-        _query = Query(
-            key: [FetchUserQuery(userId: "userId")],
-            fetch: { try await apiClient.fetch(FetchUserQuery(userId: "userId")) },
-            select: { data in data.fragments.userFragment },
-            placeholderData: { previousData in previousData },
-            initialData: cachedUser,
-            options: .init(
-                staleTime: .minutes(5),
-                retry: 3,
-                reportOnError: .always,
-                refetchInterval: .seconds(30),
-                refetchIntervalInBackground: .minutes(1),
-                refetchOnReconnect: .ifStale,
-                refetchOnAppear: .ifStale
-            )
-        )
-    }
-}
 
 #### QueryKey
 
@@ -97,1215 +126,757 @@ enum CustomQueryKey: QueryKey {
 }
 ```
 
-#### How it works at high level
+#### Components/Classes/Structs to be implemented
 
-Query is a property wrapper leverage SwiftUI Dynamic Property. SwiftUI consider dynamic property as part of swiftui environment. Therefore we can use @State, @StateObject, @ObservedObject, @Environment or any SwiftUI stuff inside the property wrapper.
-
-To help Query aware of view lifecycle, unlike react which leverage hook mechanism, in swiftui it will be manually works. We will provide a utility view modifier to help ease the boilerplate. Something like
+### UseQuery
 
 ```swift
-struct AttachViewLifecycleModifier<Query: QueryProtocol>: ViewModifier {
-
-    let query: Query
-
-    init(query: Query) {
-        self.query = query
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .onAppear {
-                query.onAppear()
-            }
-            .onDisappear {
-                query.onDisappear()
-            }
-    }
-}
-
-extension View {
-    func attach<Query: QueryProtocol>(query: Query) {
-        modifier(AttachViewLifecycleModifier(query: query))
-    }
-}
-
-// Usage
-struct UserView: View {
-
-    @Query<User> var userQuery
-
-    var body: some View {
-        Text("Hello")
-            .attach(userQuery)
-    } 
-}
-```
-
-
-#### 3. Status Handling
-```swift
-// Enum-based status
-switch userQuery.status {
-case .loading: ProgressView()
-case .success: UserView(userQuery.data!)
-case .error: ErrorView(userQuery.error!)
-case .idle: EmptyView()
-}
-```
-
-#### 4. Type Safety with Generated Query Types
-```swift
-// Generated query types (from GraphQL codegen or similar)
-struct GetUserQuery: QueryKey {
-    let userId: String
-}
-
-struct GetDefaultLivestreamThumbnailUrlQuery: QueryKey {
-    let currentUserId: String
-}
-
-// Usage with generated types as keys
-@Query(
-    fetch: { try await client.request(GetUserQuery(userId: userId)) }
-) var userQuery
-
-// With select transformation (like React example)
-@Query(
-    key: GetDefaultLivestreamThumbnailUrlQuery(currentUserId: currentUserId),
-    fetch: { try await client.request(GetDefaultLivestreamThumbnailUrlQuery(currentUserId: currentUserId)) },
-    select: { (data: GetDefaultLivestreamThumbnailUrlResponse) in 
-        data.me?.defaultLivestreamThumbnailUrl 
-    }
-) var thumbnailQuery
-```
-
-### Query API
-
-```swift
-// Query state access
-userQuery.status      // .idle, .loading, .success, .error
-userQuery.data        // T?
-userQuery.error       // Error?
-userQuery.isLoading   // Bool
-userQuery.isSuccess   // Bool
-userQuery.isError     // Bool
-userQuery.isFetching  // Bool (background refetch)
-userQuery.isStale     // Bool
-
-// Query actions
-_userQuery.refetch()                    // Basic refetch
-_userQuery.refetch { fetcher in         // ✨ NEW: Configure fetcher before refetch
-    fetcher.searchTerm = "new value"    // Update dynamic properties
-    fetcher.options = newOptions        // Modify fetcher configuration
-}
-_userQuery.invalidate()                 // Mark as stale
-_userQuery.reset()                      // Reset to initial state
-```
-
-### FetchProtocol Architecture
-
-SwiftUI Query now supports both closure-based and protocol-based fetching for maximum flexibility and dynamic input handling.
-
-#### FetchProtocol Definition
-```swift
-@MainActor
-public protocol FetchProtocol: AnyObject, Sendable {
-    associatedtype Output: Sendable
-    func fetch() async throws -> Output
-}
-```
-
-#### Dynamic Input with FetchProtocol
-Unlike closures, FetchProtocol objects can access dynamic properties at fetch time:
-
-```swift
-@MainActor
-public final class PokemonSearchFetcher: ObservableObject, FetchProtocol {
-    @Published public var searchTerm: String = ""
-    @Published public var includeVariants: Bool = true
+@available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *)
+struct UseQuery<Key: QueryKey, Data: Sendable, Content: View>: View {
+    let key: Key
+    let queryFn: @Sendable () async throws -> Data
+    let staleTime: TimeInterval
+    let gcTime: TimeInterval
+    let refetchOnWindowFocus: Bool
+    let refetchOnReconnect: Bool
+    let refetchOnMount: RefetchOnMount
+    let retry: RetryConfig
+    let retryDelay: RetryDelayFunction?
+    let enabled: Bool
+    let refetchInterval: TimeInterval?
+    let refetchIntervalInBackground: Bool
+    let select: (@Sendable (Data) -> Data)?
+    let placeholderData: (@Sendable (Data?) -> Data)?
+    let initialData: Data?
+    let initialDataUpdatedAt: Date?
+    let throwOnError: Bool
+    let meta: QueryMeta?
     
-    public init(searchTerm: String = "") {
-        self.searchTerm = searchTerm
-    }
+    @State private var queryObserver: QueryObserver<Key, Data>
+    @ViewBuilder private var content
     
-    public func fetch() async throws -> Pokemon {
-        // Uses current searchTerm value (dynamic!)
-        let cleanTerm = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanTerm.isEmpty else {
-            throw SearchError.emptyTerm
-        }
-        
-        let url = URL(string: "https://pokeapi.co/api/v2/pokemon/\(cleanTerm)")!
-        let (data, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode(Pokemon.self, from: data)
-    }
-}
-```
-
-#### Usage Examples
-```swift
-struct SearchView: View {
-    @State private var searchText = ""
-    @StateObject private var fetcher = PokemonSearchFetcher()
-    
-    // Generic Query with FetchProtocol
-    @Query<PokemonSearchFetcher> var searchQuery: QueryState<Pokemon>
-    
-    init() {
-        self._searchQuery = Query(
-            "pokemon-search",
-            fetcher: fetcher,
-            options: QueryOptions(staleTime: .seconds(30))
-        )
-    }
-    
-    var body: some View {
-        VStack {
-            TextField("Search Pokemon", text: $searchText)
-                .onChange(of: searchText) { _, newValue in
-                    fetcher.searchTerm = newValue
-                }
-            
-            // NEW: Configure and refetch in one step
-            Button("Search Pikachu") {
-                _searchQuery.refetch { $0.searchTerm = "pikachu" }
-            }
-            
-            Button("Search Charizard") {
-                _searchQuery.refetch { $0.searchTerm = "charizard" }
-            }
-        }
-        .attach(_searchQuery)
-    }
-}
-```
-
-#### Backward Compatibility
-The closure-based API is still supported through automatic wrapping:
-
-```swift
-// Old way (still works)
-@Query("user-\(userId)", fetch: {
-    try await api.getUser(userId) // ⚠️ Captures static userId
-}) var userQuery
-
-// New way (dynamic)
-@StateObject private var userFetcher = UserFetcher(userId: userId)
-@Query("user-profile", fetcher: userFetcher) var userQuery
-// ✅ userFetcher.userId can change dynamically
-```
-
-#### Generic Query Structure
-```swift
-@propertyWrapper @MainActor
-public struct Query<F: FetchProtocol>: DynamicProperty, ViewLifecycleAttachable 
-where F.Output: Sendable {
-    
-    public typealias T = F.Output
-    public let fetcher: F  // Strongly typed fetcher
-    
-    // Initialization with FetchProtocol object
-    public init(
-        _ key: any QueryKey,
-        fetcher: F,
-        placeholderData: (@Sendable (T?) -> T?)? = nil,
-        initialData: T? = nil,
-        options: QueryOptions = .default
-    )
-    
-    // Backward compatibility with closures
-    public init<T: Sendable>(
-        _ key: any QueryKey,
-        fetch: @Sendable @escaping () async throws -> T,
-        // ... other parameters
-    ) where F.Output == T, F == Fetcher<T>
-}
-```
-
-#### Benefits of FetchProtocol
-1. **Dynamic Input**: Properties can change between fetches
-2. **Type Safety**: Generic constraints ensure compile-time correctness
-3. **Configurability**: Use `refetch { fetcher in ... }` to modify before fetching
-4. **Testability**: Easy to mock FetchProtocol implementations
-5. **Reusability**: Fetcher objects can be shared across queries
-6. **Backward Compatibility**: Existing closure-based code continues to work
-
-### Current Architecture Overview
-
-SwiftUI Query follows TanStack Query's architecture with three main components:
-
-#### 1. QueryClient - Central Management
-```swift
-@MainActor
-public final class QueryClient: ObservableObject {
-    private let queryCache: QueryCache
-    public var defaultOptions: QueryOptions
-    
-    // Query lifecycle management
-    public func invalidateQueries(filter: QueryFilter? = nil, refetchType: RefetchType = .active) async
-    public func refetchQueries(filter: QueryFilter? = nil) async
-    public func resetQueries(filter: QueryFilter? = nil)
-    public func removeQueries(filter: QueryFilter? = nil)
-    public func clear()
-    
-    // Data access
-    public func setQueryData<T: Sendable>(key: any QueryKey, updater: @Sendable (T?) -> T?)
-    public func getQueryData<T: Sendable>(key: any QueryKey) -> T?
-}
-```
-
-#### 2. QueryCache - Storage and Retrieval
-```swift
-@MainActor
-internal final class QueryCache {
-    private var queries: [String: WeakQueryInstance] = [:]
-    
-    // Query management
-    func getOrCreateQuery<T: Sendable>(...) -> QueryInstance<T>
-    func findAll(filter: QueryFilter?) -> [AnyQueryInstance]
-    func removeQueries(filter: QueryFilter?)
-    func clear()
-}
-```
-
-#### 3. QueryInstance - Individual Query State
-```swift
-@MainActor
-internal final class QueryInstance<T: Sendable>: AnyQueryInstance, @unchecked Sendable {
-    let state = QueryState<T>()  // @Observable for SwiftUI
-    var isActive = false         // Active/inactive tracking
-    
-    // Query operations
-    func fetch() async
-    func invalidate()
-    func reset()
-    func markActive() / markInactive()
-}
-```
-
-#### Active/Inactive State Tracking
-Unlike React Query's observer pattern, SwiftUI Query uses simple active/inactive tracking:
-
-```swift
-extension Query {
-    public func onAppear() {
-        queryInstance?.markActive()
-        // Fetch if needed
-    }
-    
-    public func onDisappear() {
-        queryInstance?.markInactive()
-    }
-}
-```
-
-#### QueryClient Environment Integration
-```swift
-extension EnvironmentValues {
-    public var queryClient: QueryClient? {
-        get { self[QueryClientKey.self] }
-        set { self[QueryClientKey.self] = newValue }
-    }
-}
-
-extension View {
-    public func queryClient(_ queryClient: QueryClient) -> some View {
-        environment(\.queryClient, queryClient)
-    }
-}
-
-// Usage
-struct App: View {
-    let queryClient = QueryClient()
-    
-    var body: some View {
-        ContentView()
-            .queryClient(queryClient)
-    }
-}
-```
-
-#### Memory Management with Weak References
-```swift
-internal struct WeakQueryInstance {
-    weak var query: AnyQueryInstance?
-    
-    init(_ query: AnyQueryInstance) {
-        self.query = query
-    }
-}
-
-// QueryCache automatically cleans up nil references
-private func cleanupNilReferences() {
-    queries = queries.compactMapValues { weakQuery in
-        weakQuery.query != nil ? weakQuery : nil
-    }
-}
-```
-
-### Error Handling with throwOnError
-
-In React, `throwOnError` allows errors to propagate to Error Boundaries. In SwiftUI, we'll use a similar pattern with view modifiers:
-
-#### Error Boundary Implementation
-```swift
-// Define error reporting environment
-struct ReportErrorKey: EnvironmentKey {
-    static let defaultValue: (Error) -> Void = { _ in }
-}
-
-extension EnvironmentValues {
-    var reportError: (Error) -> Void {
-        get { self[ReportErrorKey.self] }
-        set { self[ReportErrorKey.self] = newValue }
-    }
-}
-
-// Error Boundary View Modifier
-struct ErrorBoundary: ViewModifier {
-    @State private var error: Error?
-    let resetAction: () -> Void
-    
-    func body(content: Content) -> some View {
-        if let error = error {
-            ErrorView(error: error, retry: {
-                self.error = nil
-                resetAction()
-            })
-        } else {
-            content
-                .environment(\.reportError) { error in
-                    self.error = error
-                }
-        }
-    }
-}
-
-extension View {
-    func errorBoundary(reset: @escaping () -> Void) -> some View {
-        modifier(ErrorBoundary(resetAction: reset))
-    }
-}
-```
-
-#### Usage with Query
-```swift
-struct TodoListView: View {
-    @Query(
-        key: GetTodosQuery(),
-        fetch: { try await api.getTodos() },
-        throwOnError: true // Errors will propagate to error boundary
-    ) var todosQuery
-    
-    var body: some View {
-        List(todosQuery.data ?? []) { todo in
-            TodoRow(todo: todo)
-        }
-        .errorBoundary {
-            // Reset action when retry is tapped
-            Task { await todosQuery.refetch() }
-        }
-    }
-}
-
-// Nested error boundaries
-struct AppView: View {
-    var body: some View {
-        NavigationView {
-            TodoListView()
-        }
-        .errorBoundary {
-            // App-level error recovery
-            print("App level error recovery")
-        }
-    }
-}
-```
-
-#### throwOnError API Options
-```swift
-enum ThrowOnError {
-    case never
-    case always
-    case when((Error) -> Bool)
-}
-
-// Usage examples
-@Query(
-    key: GetUserQuery(userId: userId),
-    fetch: { try await api.getUser(userId) },
-    throwOnError: .always // All errors propagate to error boundary
-) var userQuery
-
-@Query(
-    key: GetPostsQuery(),
-    fetch: { try await api.getPosts() },
-    throwOnError: .when { error in
-        // Only throw network errors to boundary
-        error.isNetworkError || error.isFatalError
-    }
-) var postsQuery
-
-@Query(
-    key: GetSettingsQuery(),
-    fetch: { try await api.getSettings() },
-    throwOnError: .never // Handle errors inline
-) var settingsQuery
-```
-
-#### Complete Example with Error Boundary
-```swift
-struct UserProfileView: View {
-    let userId: String
-    @Environment(\.reportError) private var reportError
-    
-    @Query(
-        key: GetUserQuery(userId: userId),
-        fetch: { try await api.getUser(userId) },
-        throwOnError: .when { error in
-            // Only throw 500 errors to boundary
-            (error as? APIError)?.statusCode == 500
-        }
-    ) var userQuery
-    
-    var body: some View {
-        ScrollView {
-            switch userQuery.status {
-            case .loading:
-                ProgressView()
-            case .success:
-                if let user = userQuery.data {
-                    UserDetailsView(user: user)
-                }
-            case .error:
-                // Non-500 errors handled inline
-                if let error = userQuery.error {
-                    InlineErrorView(error: error) {
-                        await userQuery.refetch()
-                    }
-                }
-            case .idle:
-                EmptyView()
-            }
-        }
-        .navigationTitle("User Profile")
-        .errorBoundary {
-            userQuery.reset()
-        }
-    }
-}
-```
-
-This approach provides:
-- Centralized error handling like React Error Boundaries
-- Flexible error propagation control
-- SwiftUI-native implementation
-- Support for nested error boundaries
-- Easy reset functionality
-
-### Refetch Behaviors: onAppear and onReconnect
-
-React Query's `refetchOnMount` and `refetchOnReconnect` translate to SwiftUI as view lifecycle and network connectivity triggers:
-
-#### Network Monitoring
-```swift
-import Network
-
-@Observable
-class NetworkMonitor {
-    static let shared = NetworkMonitor()
-    private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue(label: "NetworkMonitor")
-    
-    private(set) var isConnected = false
-    
-    private init() {
-        monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
-                let wasConnected = self?.isConnected ?? false
-                self?.isConnected = path.status == .satisfied
-                
-                // Notify when reconnected
-                if !wasConnected && self?.isConnected == true {
-                    NotificationCenter.default.post(
-                        name: .networkReconnected, 
-                        object: nil
-                    )
-                }
-            }
-        }
-        monitor.start(queue: queue)
-    }
-}
-
-extension Notification.Name {
-    static let networkReconnected = Notification.Name("networkReconnected")
-}
-```
-
-#### Refetch Trigger Options
-```swift
-enum RefetchTrigger {
-    case never
-    case always
-    case ifStale
-    case when(() -> Bool)
-}
-
-struct QueryOptions {
-    var staleTime: Duration = .zero
-    var gcTime: Duration = .minutes(5)
-    
-    // React Query equivalents
-    var refetchOnAppear: RefetchTrigger = .ifStale        // refetchOnMount
-    var refetchOnReconnect: RefetchTrigger = .ifStale     // refetchOnReconnect
-    
-    // SwiftUI-specific additions
-    var refetchOnSceneActive: RefetchTrigger = .ifStale   // App foreground
-}
-```
-
-#### Usage Examples
-```swift
-// Static configuration data - minimal refetching
-struct ConfigView: View {
-    @Query(
-        key: GetAppConfigQuery(),
-        fetch: { try await api.getAppConfig() },
-        options: .init(
-            staleTime: .hours(24),
-            refetchOnAppear: .never,
-            refetchOnReconnect: .never,
-            refetchOnSceneActive: .never
-        )
-    ) var configQuery
-    
-    var body: some View {
-        // UI implementation
-    }
-}
-
-// Real-time data - aggressive refetching
-struct NotificationsView: View {
-    @Query(
-        key: GetNotificationsQuery(),
-        fetch: { try await api.getNotifications() },
-        options: .init(
-            staleTime: .zero,
-            refetchOnAppear: .always,
-            refetchOnReconnect: .always,
-            refetchOnSceneActive: .always
-        )
-    ) var notificationsQuery
-    
-    var body: some View {
-        // UI implementation
-    }
-}
-
-// Smart refetching based on staleness
-struct UserProfileView: View {
-    let userId: String
-    
-    @Query(
-        key: GetUserQuery(userId: userId),
-        fetch: { try await api.getUser(userId) },
-        options: .init(
-            staleTime: .minutes(5),
-            refetchOnAppear: .ifStale,        // Only refetch if data is stale
-            refetchOnReconnect: .ifStale,     // Only refetch if stale + reconnected
-            refetchOnSceneActive: .never      // Don't refetch on app activation
-        )
-    ) var userQuery
-    
-    var body: some View {
-        switch userQuery.status {
-        case .loading:
-            ProgressView()
-        case .success:
-            if let user = userQuery.data {
-                UserDetailsView(user: user)
-            }
-        case .error:
-            ErrorView(error: userQuery.error!) {
-                await userQuery.refetch()
-            }
-        case .idle:
-            EmptyView()
-        }
-    }
-}
-
-// Conditional refetching
-struct SearchResultsView: View {
-    let searchTerm: String
-    @State private var isSearching = false
-    
-    @Query(
-        key: SearchQuery(term: searchTerm),
-        fetch: { try await api.search(searchTerm) },
-        options: .init(
-            staleTime: .minutes(10),
-            refetchOnAppear: .when { 
-                // Only refetch if we're actively searching
-                isSearching 
-            },
-            refetchOnReconnect: .ifStale
-        )
-    ) var searchQuery
-    
-    var body: some View {
-        // UI implementation
-    }
-}
-```
-
-#### Property Wrapper Lifecycle Integration
-```swift
-@propertyWrapper
-struct Query<T: Sendable>: DynamicProperty {
-    @State private var queryState: QueryState<T> = .idle
-    @State private var hasAppeared = false
-    @State private var hasInitialFetched = false
-    
-    private let key: any QueryKey
-    private let fetch: @Sendable () async throws -> T
-    private let options: QueryOptions
-    
-    var wrappedValue: QueryState<T> {
-        queryState
-    }
-    
-    func update() {
-        // Only execute initial query if refetchOnAppear is .never
-        // Otherwise, let the attach lifecycle handle it
-        if !hasInitialFetched {
-            hasInitialFetched = true
-            handleInitialSetup()
-            
-            if options.enabled && options.refetchOnAppear == .never {
-                executeQuery(isInitial: true)
-            }
-            
-            setupNetworkMonitoring()
-        }
-    }
-    
-    private func handleInitialSetup() {
-        // Set initial data if provided
-        if queryState.status == .idle, let initialData = initialData {
-            queryState.setSuccess(data: initialData)
-        }
-    }
-    
-    private func setupNetworkMonitoring() {
-        // Listen for network reconnection notifications
-        NotificationCenter.default.publisher(for: .networkReconnected)
-            .sink { _ in
-                if shouldRefetch(trigger: options.refetchOnReconnect) {
-                    executeQuery(isInitial: false)
-                }
-            }
-    }
-    
-    private func shouldRefetch(trigger: RefetchTrigger) -> Bool {
-        switch trigger {
-        case .never: return false
-        case .always: return true
-        case .ifStale: return queryState.isStale || queryState.status == .idle
-        case .when(let condition): return condition()
-        }
-    }
-}
-
-// MARK: - ViewLifecycleAttachable Conformance
-extension Query: ViewLifecycleAttachable {
-    func onAppear() {
-        if !hasAppeared {
-            hasAppeared = true
-            
-            // Execute query based on refetchOnAppear setting
-            if options.enabled && shouldRefetch(trigger: options.refetchOnAppear) {
-                executeQuery(isInitial: queryState.status == .idle)
-            }
-        }
-    }
-    
-    func onDisappear() {
-        // Future: Cancel in-flight requests, pause intervals
-    }
-}
-```
-
-#### Complete Query Options Structure
-```swift
-struct QueryOptions {
-    // Timing
-    var staleTime: Duration = .zero
-    var gcTime: Duration = .minutes(5)
-    
-    // Refetch triggers
-    var refetchOnAppear: RefetchTrigger = .ifStale
-    var refetchOnReconnect: RefetchTrigger = .ifStale
-    var refetchOnSceneActive: RefetchTrigger = .ifStale
-    
-    // Other options
-    var enabled: Bool = true
-    var retry: RetryConfig = .default
-    var throwOnError: ThrowOnError = .never
-    var networkMode: NetworkMode = .online
-    
-    static let `default` = QueryOptions()
-}
-```
-
-This provides:
-- Automatic refetching on view appear (equivalent to refetchOnMount)
-- Network reconnection detection and refetching
-- Flexible trigger conditions (never, always, ifStale, custom)
-- Seamless integration with SwiftUI view lifecycle
-
-### Query Execution Logic Flow
-
-SwiftUI Query uses a smart execution strategy that depends on the `refetchOnAppear` setting to avoid duplicate fetches and provide predictable behavior:
-
-#### When `refetchOnAppear: .never`
-```swift
-@Query("config", fetch: fetchConfig, options: QueryOptions(refetchOnAppear: .never))
-var configQuery
-
-// Usage: .attach(configQuery) // Optional - no effect since .never
-```
-
-**Execution Flow:**
-1. ✅ `update()` method executes query immediately on view load
-2. ❌ `onAppear()` never triggers query (even with .attach())
-3. **Use case:** One-time configuration data that shouldn't refetch
-
-#### When `refetchOnAppear: .always` or `.ifStale`
-```swift
-@Query("posts", fetch: fetchPosts, options: QueryOptions(refetchOnAppear: .ifStale))
-var postsQuery
-
-// Usage: .attach(postsQuery) // Required for query to execute
-```
-
-**Execution Flow:**
-1. ❌ `update()` method does NOT execute query on view load
-2. ✅ `onAppear()` executes query when view appears (via .attach())
-3. ✅ Subsequent `onAppear()` calls may refetch based on staleness/settings
-4. **Use case:** Dynamic data that should refresh when view appears
-
-#### Comparison Table
-
-| `refetchOnAppear` | Initial Fetch in `update()` | Fetch in `onAppear()` | Requires `.attach()` |
-|-------------------|------------------------------|----------------------|---------------------|
-| `.never`          | ✅ Yes                      | ❌ Never             | ❌ No               |
-| `.always`         | ❌ No                       | ✅ Always            | ✅ Yes              |
-| `.ifStale`        | ❌ No                       | ✅ If stale          | ✅ Yes              |
-| `.when(condition)`| ❌ No                       | ✅ If condition true | ✅ Yes              |
-
-#### Best Practices
-
-**For static/configuration data:**
-```swift
-@Query("app-config", fetch: fetchConfig, options: QueryOptions(
-    refetchOnAppear: .never,
-    staleTime: .hours(24)
-))
-var configQuery
-// No .attach() needed - fetches once automatically
-```
-
-**For dynamic data:**
-```swift
-@Query("user-posts", fetch: fetchPosts, options: QueryOptions(
-    refetchOnAppear: .ifStale,
-    staleTime: .minutes(5)
-))
-var postsQuery
-
-// In view:
-.attach(postsQuery) // Required for execution
-```
-
-**For real-time data:**
-```swift
-@Query("notifications", fetch: fetchNotifications, options: QueryOptions(
-    refetchOnAppear: .always,
-    staleTime: .zero
-))
-var notificationsQuery
-
-// In view:
-.attach(notificationsQuery) // Always refetches on appear
-```
-
-
-## useInfiniteQuery Clone - Design Exploration
-
-### React Query useInfiniteQuery
-```javascript
-const {
-  data,
-  error,
-  fetchNextPage,
-  fetchPreviousPage,
-  hasNextPage,
-  hasPreviousPage,
-  isFetchingNextPage,
-  isFetchingPreviousPage,
-  status,
-  fetchStatus,
-} = useInfiniteQuery({
-  queryKey: ['projects'],
-  queryFn: ({ pageParam }) => fetchProjects({ cursor: pageParam }),
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => lastPage.nextCursor,
-  getPreviousPageParam: (firstPage, allPages, firstPageParam, allPageParams) => firstPage.prevCursor,
-  maxPages: 3,
-  pages: 5, // Deprecated, use maxPages
-})
-
-// data shape:
-// {
-//   pages: [page1, page2, page3],
-//   pageParams: [param1, param2, param3]
-// }
-```
-
-### SwiftUI @InfiniteQuery Design
-
-#### Basic Usage
-```swift
-struct PostsView: View {
-    @InfiniteQuery(
-        "posts",
-        initialPageParam: 0,
-        fetch: { pageParam in 
-            try await api.fetchPosts(page: pageParam)
-        },
-        getNextPageParam: { lastPage, allPages, lastPageParam, allPageParams in
-            lastPage.hasMore ? lastPageParam + 1 : nil
-        }
-    ) var postsQuery
-    
-    var body: some View {
-        ScrollView {
-            LazyVStack {
-                ForEach(postsQuery.data?.pages ?? []) { page in
-                    ForEach(page.posts) { post in
-                        PostRow(post: post)
-                    }
-                }
-                
-                if postsQuery.hasNextPage {
-                    ProgressView()
-                        .onAppear {
-                            Task { try await _postsQuery.fetchNextPage() }
-                        }
-                }
-            }
-        }
-        .attach(_postsQuery)
-    }
-}
-```
-
-#### Data Structure
-```swift
-public struct InfiniteData<Page: Sendable, PageParam: Sendable>: Sendable {
-    public let pages: [Page]
-    public let pageParams: [PageParam]
-    
-    public init(pages: [Page] = [], pageParams: [PageParam] = []) {
-        self.pages = pages
-        self.pageParams = pageParams
-    }
-}
-```
-
-#### Configuration Options
-```swift
-public struct InfiniteQueryOptions<Page: Sendable, PageParam: Sendable>: Sendable {
-    // Required
-    public let initialPageParam: PageParam
-    public let getNextPageParam: @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?
-    
-    // Optional
-    public let getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)?
-    
-    // Standard query options
-    public let staleTime: Duration
-    public let gcTime: Duration
-    public let refetchOnAppear: RefetchTrigger
-    public let refetchOnReconnect: RefetchTrigger
-    public let retry: RetryConfig
-    public let enabled: Bool
-    
-    public init(
-        initialPageParam: PageParam,
-        getNextPageParam: @escaping @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?,
-        getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)? = nil,
-        staleTime: Duration = .zero,
-        gcTime: Duration = .minutes(5),
-        refetchOnAppear: RefetchTrigger = .ifStale,
-        refetchOnReconnect: RefetchTrigger = .ifStale,
+    init(
+        key: Key,
+        queryFn: @escaping @Sendable () async throws -> Data,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = 5 * 60, // 5 minutes
+        refetchOnWindowFocus: Bool = true,
+        refetchOnReconnect: Bool = true,
+        refetchOnMount: RefetchOnMount = .always,
         retry: RetryConfig = .default,
-        enabled: Bool = true
-    ) {
-        // Initialize all properties
-    }
-}
-```
-
-#### Property Wrapper API
-```swift
-@propertyWrapper @MainActor
-public struct InfiniteQuery<Page: Sendable, PageParam: Sendable>: DynamicProperty, ViewLifecycleAttachable {
-    
-    // State management
-    @State private var observer: InfiniteQueryObserver<Page, PageParam>?
-    @Environment(\.queryClient) private var queryClient
-    
-    // Configuration
-    private let key: any QueryKey
-    private let fetch: @Sendable (PageParam) async throws -> Page
-    private let options: InfiniteQueryOptions<Page, PageParam>
-    
-    // Initialization
-    public init(
-        _ key: any QueryKey,
-        initialPageParam: PageParam,
-        fetch: @escaping @Sendable (PageParam) async throws -> Page,
-        getNextPageParam: @escaping @Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?,
-        getPreviousPageParam: (@Sendable (Page, [Page], PageParam, [PageParam]) -> PageParam?)? = nil,
-        options: QueryOptions = .default
+        retryDelay: RetryDelayFunction? = nil,
+        enabled: Bool = true,
+        refetchInterval: TimeInterval? = nil,
+        refetchIntervalInBackground: Bool = false,
+        select: (@Sendable (Data) -> Data)? = nil,
+        placeholderData: (@Sendable (Data?) -> Data)? = nil,
+        initialData: Data? = nil,
+        initialDataUpdatedAt: Date? = nil,
+        throwOnError: Bool = false,
+        meta: QueryMeta? = nil,
+        @ViewBuilder content: () -> Content
     ) {
         self.key = key
-        self.fetch = fetch
-        self.options = InfiniteQueryOptions(
-            initialPageParam: initialPageParam,
-            getNextPageParam: getNextPageParam,
-            getPreviousPageParam: getPreviousPageParam,
-            staleTime: options.staleTime,
-            gcTime: options.gcTime,
-            refetchOnAppear: options.refetchOnAppear,
-            refetchOnReconnect: options.refetchOnReconnect,
-            retry: options.retry,
-            enabled: options.enabled
-        )
+        self.queryFn = queryFn
+        self.staleTime = staleTime
+        self.gcTime = gcTime
+        self.refetchOnWindowFocus = refetchOnWindowFocus
+        self.refetchOnReconnect = refetchOnReconnect
+        self.refetchOnMount = refetchOnMount
+        self.retry = retry
+        self.retryDelay = retryDelay
+        self.enabled = enabled
+        self.refetchInterval = refetchInterval
+        self.refetchIntervalInBackground = refetchIntervalInBackground
+        self.select = select
+        self.placeholderData = placeholderData
+        self.initialData = initialData
+        self.initialDataUpdatedAt = initialDataUpdatedAt
+        self.throwOnError = throwOnError
+        self.meta = meta
+        self.content = content()
     }
     
-    // Property wrapper value
-    public var wrappedValue: InfiniteQueryState<Page, PageParam> {
-        observer?.state ?? InfiniteQueryState()
-    }
-    
-    // Projected value for actions
-    public var projectedValue: InfiniteQueryActions<Page, PageParam> {
-        InfiniteQueryActions(observer: observer)
+    var body: some View {
+        content
+        .task {
+            // Subscribe to query
+            await queryObserver.subscribe()
+        }
+        .onChange(of: key) { _, newKey in
+            Task {
+                await queryObserver.setOptions(QueryOptions(
+                    queryKey: newKey,
+                    queryFn: queryFn,
+                    // ... updated options
+                ))
+            }
+        }
+        .onDisappear {
+            Task {
+                await queryObserver.unsubscribe()
+            }
+        }
     }
 }
 ```
 
-#### State and Actions
+### UseInfiniteQuery
+
 ```swift
-// State exposed to views
+@available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *)
+struct UseInfiniteQuery<Key: QueryKey, Data: Sendable, PageParam: Sendable, Content: View>: View {
+    let key: Key
+    let queryFn: @Sendable (PageParam) async throws -> Data
+    let initialPageParam: PageParam
+    let getNextPageParam: @Sendable (Data, [Data], PageParam, [PageParam]) -> PageParam?
+    let getPreviousPageParam: (@Sendable (Data, [Data], PageParam, [PageParam]) -> PageParam?)?
+    let maxPages: Int?
+    let staleTime: TimeInterval
+    let gcTime: TimeInterval
+    let refetchOnWindowFocus: Bool
+    let refetchOnReconnect: Bool
+    let refetchOnMount: RefetchOnMount
+    let retry: RetryConfig
+    let retryDelay: RetryDelayFunction?
+    let enabled: Bool
+    let refetchInterval: TimeInterval?
+    let refetchIntervalInBackground: Bool
+    let select: (@Sendable (InfiniteData<Data, PageParam>) -> InfiniteData<Data, PageParam>)?
+    let placeholderData: (@Sendable (InfiniteData<Data, PageParam>?) -> InfiniteData<Data, PageParam>)?
+    let initialData: InfiniteData<Data, PageParam>?
+    let initialDataUpdatedAt: Date?
+    let throwOnError: Bool
+    let meta: QueryMeta?
+    
+    @State private var infiniteQueryObserver: InfiniteQueryObserver<Key, Data, PageParam>
+    @ViewBuilder private var content
+    
+    init(
+        key: Key,
+        queryFn: @escaping @Sendable (PageParam) async throws -> Data,
+        initialPageParam: PageParam,
+        getNextPageParam: @escaping @Sendable (Data, [Data], PageParam, [PageParam]) -> PageParam?,
+        getPreviousPageParam: (@Sendable (Data, [Data], PageParam, [PageParam]) -> PageParam?)? = nil,
+        maxPages: Int? = nil,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = 5 * 60, // 5 minutes
+        refetchOnWindowFocus: Bool = true,
+        refetchOnReconnect: Bool = true,
+        refetchOnMount: RefetchOnMount = .always,
+        retry: RetryConfig = .default,
+        retryDelay: RetryDelayFunction? = nil,
+        enabled: Bool = true,
+        refetchInterval: TimeInterval? = nil,
+        refetchIntervalInBackground: Bool = false,
+        select: (@Sendable (InfiniteData<Data, PageParam>) -> InfiniteData<Data, PageParam>)? = nil,
+        placeholderData: (@Sendable (InfiniteData<Data, PageParam>?) -> InfiniteData<Data, PageParam>)? = nil,
+        initialData: InfiniteData<Data, PageParam>? = nil,
+        initialDataUpdatedAt: Date? = nil,
+        throwOnError: Bool = false,
+        meta: QueryMeta? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.key = key
+        self.queryFn = queryFn
+        self.initialPageParam = initialPageParam
+        self.getNextPageParam = getNextPageParam
+        self.getPreviousPageParam = getPreviousPageParam
+        self.maxPages = maxPages
+        self.staleTime = staleTime
+        self.gcTime = gcTime
+        self.refetchOnWindowFocus = refetchOnWindowFocus
+        self.refetchOnReconnect = refetchOnReconnect
+        self.refetchOnMount = refetchOnMount
+        self.retry = retry
+        self.retryDelay = retryDelay
+        self.enabled = enabled
+        self.refetchInterval = refetchInterval
+        self.refetchIntervalInBackground = refetchIntervalInBackground
+        self.select = select
+        self.placeholderData = placeholderData
+        self.initialData = initialData
+        self.initialDataUpdatedAt = initialDataUpdatedAt
+        self.throwOnError = throwOnError
+        self.meta = meta
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+        .task {
+            // Subscribe to infinite query
+            await infiniteQueryObserver.subscribe()
+        }
+        .onChange(of: key) { _, newKey in
+            Task {
+                await infiniteQueryObserver.setOptions(InfiniteQueryOptions(
+                    queryKey: newKey,
+                    queryFn: queryFn,
+                    initialPageParam: initialPageParam,
+                    getNextPageParam: getNextPageParam,
+                    getPreviousPageParam: getPreviousPageParam,
+                    // ... updated options
+                ))
+            }
+        }
+        .onDisappear {
+            Task {
+                await infiniteQueryObserver.unsubscribe()
+            }
+        }
+    }
+}
+```
+
+### Core Components
+
+#### Supporting Types
+
+```swift
+// Query Key Protocol
+protocol QueryKey: Hashable, Sendable {}
+
+// Retry Configuration
+enum RetryConfig: Sendable {
+    case none
+    case fixed(count: Int)
+    case exponentialBackoff(maxAttempts: Int, initialInterval: TimeInterval, maxInterval: TimeInterval)
+    case custom(@Sendable (Int, Error) -> Bool)
+    
+    static var `default`: RetryConfig {
+        .exponentialBackoff(maxAttempts: 3, initialInterval: 1.0, maxInterval: 30.0)
+    }
+}
+
+// Retry Delay Function
+typealias RetryDelayFunction = @Sendable (Int, Error) -> TimeInterval
+
+// Refetch on Mount Options
+enum RefetchOnMount: Sendable {
+    case always
+    case ifStale
+    case never
+}
+
+// Query Meta
+struct QueryMeta: Sendable {
+    let data: [String: Any]
+}
+
+// Infinite Query Data Structure
+struct InfiniteData<TData: Sendable, TPageParam: Sendable>: Sendable {
+    let pages: [TData]
+    let pageParams: [TPageParam]
+}
+
+// Query State
+enum QueryState<TData: Sendable, TError: Error>: Sendable {
+    case idle
+    case loading
+    case error(TError)
+    case success(TData)
+}
+
+// Fetch Status
+enum FetchStatus: Sendable {
+    case idle
+    case fetching
+    case paused
+}
+```
+
+#### QueryClient
+
+```swift
 @Observable
-public class InfiniteQueryState<Page: Sendable, PageParam: Sendable>: Sendable {
-    // Data
-    public var data: InfiniteData<Page, PageParam>?
+final class QueryClient: Sendable {
+    let queryCache: QueryCache
+    let mutationCache: MutationCache
+    let defaultOptions: DefaultOptions
     
-    // Standard query state
-    public var status: QueryStatus = .idle
-    public var error: Error?
-    public var isLoading: Bool { status == .loading }
-    public var isSuccess: Bool { status == .success }
-    public var isError: Bool { status == .error }
-    public var isFetching: Bool = false
-    public var isStale: Bool = true
-    
-    // Infinite query specific state
-    public var hasNextPage: Bool = false
-    public var hasPreviousPage: Bool = false
-    public var isFetchingNextPage: Bool = false
-    public var isFetchingPreviousPage: Bool = false
-    public var isFetchNextPageError: Bool = false
-    public var isFetchPreviousPageError: Bool = false
-}
-
-// Actions available via projected value
-public struct InfiniteQueryActions<Page: Sendable, PageParam: Sendable> {
-    weak var observer: InfiniteQueryObserver<Page, PageParam>?
-    
-    public func fetchNextPage() async throws {
-        try await observer?.fetchNextPage()
+    init(
+        queryCache: QueryCache? = nil,
+        mutationCache: MutationCache? = nil,
+        defaultOptions: DefaultOptions = DefaultOptions()
+    ) {
+        self.queryCache = queryCache ?? QueryCache()
+        self.mutationCache = mutationCache ?? MutationCache()
+        self.defaultOptions = defaultOptions
     }
     
-    public func fetchPreviousPage() async throws {
-        try await observer?.fetchPreviousPage()
+    // Query Management
+    func getQuery<Key: QueryKey, TData: Sendable>(
+        key: Key
+    ) -> Query<Key, TData>? {
+        queryCache.find(key: key)
     }
     
-    public func refetch() async throws {
-        try await observer?.refetch()
+    func ensureQuery<Key: QueryKey, TData: Sendable>(
+        options: QueryOptions<Key, TData>
+    ) -> Query<Key, TData> {
+        let query = queryCache.build(client: self, options: options)
+        query.initialize()
+        return query
     }
     
-    public func invalidate() {
-        observer?.invalidate()
+    // Query Invalidation
+    func invalidateQueries<Key: QueryKey>(
+        key: Key? = nil,
+        exact: Bool = false,
+        refetch: Bool = true
+    ) async {
+        await queryCache.invalidate(key: key, exact: exact, refetch: refetch)
     }
     
-    public func reset() {
-        observer?.reset()
+    // Query Refetching
+    func refetchQueries<Key: QueryKey>(
+        key: Key? = nil,
+        exact: Bool = false
+    ) async {
+        await queryCache.refetch(key: key, exact: exact)
     }
-}
-```
-
-#### Advanced Examples
-
-##### Bidirectional Pagination
-```swift
-struct TimelineView: View {
-    @InfiniteQuery(
-        "timeline",
-        initialPageParam: Date.now,
-        fetch: { timestamp in
-            try await api.fetchPosts(before: timestamp)
-        },
-        getNextPageParam: { lastPage, _, _, _ in
-            lastPage.posts.last?.timestamp
-        },
-        getPreviousPageParam: { firstPage, _, _, _ in
-            firstPage.posts.first?.timestamp
-        }
-    ) var timelineQuery
     
-    var body: some View {
-        ScrollView {
-            // Pull to load newer posts
-            if timelineQuery.hasPreviousPage {
-                Button("Load Newer") {
-                    Task { try await _timelineQuery.fetchPreviousPage() }
-                }
-            }
-            
-            // Posts list
-            LazyVStack {
-                ForEach(timelineQuery.data?.pages ?? []) { page in
-                    ForEach(page.posts) { post in
-                        PostRow(post: post)
-                    }
-                }
-            }
-            
-            // Load older posts at bottom
-            if timelineQuery.hasNextPage {
-                ProgressView()
-                    .onAppear {
-                        Task { try await _timelineQuery.fetchNextPage() }
-                    }
-            }
-        }
+    // Query Data Management
+    func setQueryData<Key: QueryKey, TData: Sendable>(
+        key: Key,
+        data: TData,
+        updatedAt: Date = Date()
+    ) {
+        let query = ensureQuery(options: QueryOptions(
+            queryKey: key,
+            queryFn: { data } // Dummy function
+        ))
+        query.setData(data: data, updatedAt: updatedAt)
+    }
+    
+    func getQueryData<Key: QueryKey, TData: Sendable>(
+        key: Key
+    ) -> TData? {
+        getQuery(key: key)?.state.data
+    }
+    
+    // Cache Management
+    func clear() {
+        queryCache.clear()
+        mutationCache.clear()
     }
 }
 ```
 
-##### Cursor-based Pagination
+#### QueryCache
+
 ```swift
-struct SearchResultsView: View {
-    let searchTerm: String
+@Observable
+final class QueryCache: Sendable {
+    private let queries = NSCache<NSString, AnyQuery>()
+    private let queriesMap = Mutex<[String: AnyQuery]>()
     
-    @InfiniteQuery(
-        ["search", searchTerm],
-        initialPageParam: nil as String?,
-        fetch: { cursor in
-            try await api.search(term: searchTerm, cursor: cursor)
-        },
-        getNextPageParam: { lastPage, _, _, _ in
-            lastPage.nextCursor
+    func find<Key: QueryKey, TData: Sendable>(
+        key: Key
+    ) -> Query<Key, TData>? {
+        let hashKey = hashQueryKey(key)
+        return queriesMap.withLock { map in
+            map[hashKey] as? Query<Key, TData>
         }
-    ) var searchQuery
+    }
     
-    var body: some View {
-        List {
-            ForEach(searchQuery.data?.pages ?? []) { page in
-                Section {
-                    ForEach(page.results) { result in
-                        SearchResultRow(result: result)
-                    }
-                }
+    func build<Key: QueryKey, TData: Sendable>(
+        client: QueryClient,
+        options: QueryOptions<Key, TData>
+    ) -> Query<Key, TData> {
+        let hashKey = hashQueryKey(options.queryKey)
+        
+        return queriesMap.withLock { map in
+            if let existing = map[hashKey] as? Query<Key, TData> {
+                return existing
             }
             
-            if searchQuery.isFetchingNextPage {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-            } else if searchQuery.hasNextPage {
-                Button("Load More") {
-                    Task { try await _searchQuery.fetchNextPage() }
-                }
-            }
+            let query = Query(
+                key: options.queryKey,
+                client: client,
+                options: options,
+                cache: self,
+                state: QueryState<TData, Error>.idle
+            )
+            
+            map[hashKey] = query
+            return query
         }
+    }
+    
+    func remove<Key: QueryKey>(_ key: Key) {
+        let hashKey = hashQueryKey(key)
+        queriesMap.withLock { map in
+            map.removeValue(forKey: hashKey)
+        }
+    }
+    
+    func clear() {
+        queriesMap.withLock { map in
+            map.removeAll()
+        }
+    }
+    
+    private func hashQueryKey<Key: QueryKey>(_ key: Key) -> String {
+        // Implementation for consistent hashing of query keys
+        var hasher = Hasher()
+        key.hash(into: &hasher)
+        return String(hasher.finalize())
     }
 }
 ```
 
-##### With FetchProtocol
+#### Query
+
 ```swift
-@MainActor
-final class PostsFetcher: FetchProtocol {
-    @Published var category: String = "all"
-    let pageSize = 20
+@Observable
+final class Query<Key: QueryKey, TData: Sendable>: Sendable {
+    let queryKey: Key
+    let queryHash: String
+    private(set) var state: QueryState<TData, Error>
+    private(set) var fetchStatus: FetchStatus = .idle
+    private(set) var dataUpdatedAt: Date?
+    private(set) var errorUpdatedAt: Date?
     
-    func fetch(pageParam: Int) async throws -> PostsPage {
-        let response = try await api.fetchPosts(
-            category: category,
-            page: pageParam,
-            size: pageSize
+    private let client: QueryClient
+    private let options: QueryOptions<Key, TData>
+    private let cache: QueryCache
+    private var observers = Set<QueryObserverIdentifier>()
+    private var gcTimer: Timer?
+    private var refetchTimer: Timer?
+    private var currentPromise: Task<TData, Error>?
+    
+    init(
+        key: Key,
+        client: QueryClient,
+        options: QueryOptions<Key, TData>,
+        cache: QueryCache,
+        state: QueryState<TData, Error>
+    ) {
+        self.queryKey = key
+        self.queryHash = String(key.hashValue)
+        self.client = client
+        self.options = options
+        self.cache = cache
+        self.state = state
+    }
+    
+    func initialize() {
+        // Set initial data if provided
+        if let initialData = options.initialData {
+            setData(data: initialData, updatedAt: options.initialDataUpdatedAt ?? Date())
+        }
+    }
+    
+    func addObserver(_ identifier: QueryObserverIdentifier) {
+        observers.insert(identifier)
+        gcTimer?.invalidate()
+        gcTimer = nil
+    }
+    
+    func removeObserver(_ identifier: QueryObserverIdentifier) {
+        observers.remove(identifier)
+        
+        if observers.isEmpty {
+            scheduleGarbageCollection()
+        }
+    }
+    
+    func fetch() async throws -> TData {
+        // Check if we already have a fetch in progress
+        if let promise = currentPromise {
+            return try await promise.value
+        }
+        
+        // Check if query is enabled
+        guard options.enabled else {
+            throw QueryError.disabled
+        }
+        
+        // Create new fetch promise
+        let promise = Task<TData, Error> {
+            fetchStatus = .fetching
+            
+            do {
+                let data = try await options.queryFn()
+                setData(data: data, updatedAt: Date())
+                return data
+            } catch {
+                setError(error: error, updatedAt: Date())
+                throw error
+            }
+        }
+        
+        currentPromise = promise
+        
+        do {
+            let result = try await promise.value
+            currentPromise = nil
+            fetchStatus = .idle
+            return result
+        } catch {
+            currentPromise = nil
+            fetchStatus = .idle
+            throw error
+        }
+    }
+    
+    func setData(data: TData, updatedAt: Date) {
+        self.state = .success(data)
+        self.dataUpdatedAt = updatedAt
+        self.errorUpdatedAt = nil
+    }
+    
+    func setError(error: Error, updatedAt: Date) {
+        self.state = .error(error)
+        self.errorUpdatedAt = updatedAt
+    }
+    
+    private func scheduleGarbageCollection() {
+        gcTimer = Timer.scheduledTimer(
+            withTimeInterval: options.gcTime,
+            repeats: false
+        ) { [weak self] _ in
+            self?.cache.remove(self?.queryKey ?? key)
+        }
+    }
+    
+    func isStale(at date: Date = Date()) -> Bool {
+        guard let dataUpdatedAt = dataUpdatedAt else { return true }
+        return date.timeIntervalSince(dataUpdatedAt) > options.staleTime
+    }
+}
+```
+
+#### QueryObserver
+
+```swift
+@Observable
+final class QueryObserver<Key: QueryKey, TData: Sendable>: Sendable {
+    private let client: QueryClient
+    private var options: QueryOptions<Key, TData>
+    private var query: Query<Key, TData>?
+    private let identifier = QueryObserverIdentifier()
+    
+    // Observable state
+    private(set) var data: TData?
+    private(set) var error: Error?
+    private(set) var isLoading: Bool = false
+    private(set) var isFetching: Bool = false
+    private(set) var isSuccess: Bool = false
+    private(set) var isError: Bool = false
+    private(set) var isPending: Bool = true
+    private(set) var isRefetching: Bool = false
+    private(set) var isStale: Bool = false
+    
+    init(client: QueryClient, options: QueryOptions<Key, TData>) {
+        self.client = client
+        self.options = options
+    }
+    
+    func subscribe() async {
+        // Get or create query
+        query = client.ensureQuery(options: options)
+        query?.addObserver(identifier)
+        
+        // Initial fetch if needed
+        await executeFetch()
+        
+        // Update state from query
+        updateState()
+    }
+    
+    func unsubscribe() async {
+        query?.removeObserver(identifier)
+    }
+    
+    func setOptions(_ newOptions: QueryOptions<Key, TData>) async {
+        let oldOptions = options
+        options = newOptions
+        
+        // If query key changed, we need to subscribe to new query
+        if oldOptions.queryKey != newOptions.queryKey {
+            await unsubscribe()
+            await subscribe()
+        }
+    }
+    
+    func refetch() async throws -> TData? {
+        guard let query = query else { return nil }
+        return try await query.fetch()
+    }
+    
+    private func executeFetch() async {
+        guard let query = query else { return }
+        
+        // Determine if we should fetch
+        let shouldFetch = options.enabled && (
+            options.refetchOnMount == .always ||
+            (options.refetchOnMount == .ifStale && query.isStale())
         )
-        return response
+        
+        if shouldFetch {
+            do {
+                _ = try await query.fetch()
+            } catch {
+                // Error is handled in query state
+            }
+        }
+    }
+    
+    private func updateState() {
+        guard let query = query else { return }
+        
+        switch query.state {
+        case .idle:
+            isPending = true
+            isSuccess = false
+            isError = false
+            data = nil
+            error = nil
+        case .loading:
+            isLoading = true
+            isPending = false
+            isSuccess = false
+            isError = false
+        case .success(let value):
+            data = value
+            error = nil
+            isLoading = false
+            isPending = false
+            isSuccess = true
+            isError = false
+        case .error(let err):
+            error = err
+            data = nil
+            isLoading = false
+            isPending = false
+            isSuccess = false
+            isError = true
+        }
+        
+        isFetching = query.fetchStatus == .fetching
+        isRefetching = isFetching && !isPending
+        isStale = query.isStale()
     }
 }
 
-struct PostsView: View {
-    @StateObject private var fetcher = PostsFetcher()
+// Supporting Types
+struct QueryObserverIdentifier: Hashable, Sendable {
+    let id = UUID()
+}
+
+enum QueryError: Error {
+    case disabled
+    case cancelled
+}
+```
+
+#### InfiniteQueryObserver
+
+```swift
+@Observable
+final class InfiniteQueryObserver<Key: QueryKey, TData: Sendable, TPageParam: Sendable>: Sendable {
+    private let client: QueryClient
+    private var options: InfiniteQueryOptions<Key, TData, TPageParam>
+    private var query: InfiniteQuery<Key, TData, TPageParam>?
+    private let identifier = QueryObserverIdentifier()
     
-    @InfiniteQuery(
-        "posts",
-        initialPageParam: 1,
-        fetcher: fetcher,
-        getNextPageParam: { page, _, lastParam, _ in
-            page.hasMore ? lastParam + 1 : nil
-        }
-    ) var postsQuery
+    // Observable state
+    private(set) var data: InfiniteData<TData, TPageParam>?
+    private(set) var error: Error?
+    private(set) var isLoading: Bool = false
+    private(set) var isFetching: Bool = false
+    private(set) var isFetchingNextPage: Bool = false
+    private(set) var isFetchingPreviousPage: Bool = false
+    private(set) var hasNextPage: Bool = false
+    private(set) var hasPreviousPage: Bool = false
+    private(set) var isSuccess: Bool = false
+    private(set) var isError: Bool = false
+    private(set) var isPending: Bool = true
+    
+    init(client: QueryClient, options: InfiniteQueryOptions<Key, TData, TPageParam>) {
+        self.client = client
+        self.options = options
+    }
+    
+    func fetchNextPage() async throws -> InfiniteData<TData, TPageParam>? {
+        guard let query = query else { return nil }
+        return try await query.fetchNextPage()
+    }
+    
+    func fetchPreviousPage() async throws -> InfiniteData<TData, TPageParam>? {
+        guard let query = query else { return nil }
+        return try await query.fetchPreviousPage()
+    }
+    
+    // Similar implementation pattern as QueryObserver
+    // with additional handling for infinite pagination
+}
+```
+
+### Usage Examples
+
+#### Basic Query
+
+```swift
+struct UserProfileView: View {
+    let userId: String
     
     var body: some View {
-        VStack {
-            Picker("Category", selection: $fetcher.category) {
-                Text("All").tag("all")
-                Text("Tech").tag("tech")
-                Text("Design").tag("design")
+        UseQuery(
+            key: QueryKeys.user(id: userId),
+            queryFn: { try await fetchUser(userId) }
+        ) { observer in
+            if observer.isLoading {
+                ProgressView()
+            } else if let error = observer.error {
+                Text("Error: \(error.localizedDescription)")
+            } else if let user = observer.data {
+                UserDetails(user: user)
             }
-            .onChange(of: fetcher.category) { _, _ in
-                _postsQuery.invalidate()
-                Task { try await _postsQuery.refetch() }
+        }
+    }
+}
+
+enum QueryKeys: QueryKey {
+    case user(id: String)
+    case posts(userId: String)
+    case comments(postId: String)
+}
+```
+
+#### Infinite Query
+
+```swift
+struct PostsListView: View {
+    var body: some View {
+        UseInfiniteQuery(
+            key: QueryKeys.posts(userId: "123"),
+            queryFn: { page in
+                try await fetchPosts(userId: "123", page: page)
+            },
+            initialPageParam: 0,
+            getNextPageParam: { lastPage, allPages, lastPageParam, _ in
+                lastPage.hasMore ? lastPageParam + 1 : nil
             }
-            
+        ) { observer in
             ScrollView {
                 LazyVStack {
-                    ForEach(postsQuery.data?.pages ?? []) { page in
+                    ForEach(observer.data?.pages ?? [], id: \.self) { page in
                         ForEach(page.posts) { post in
                             PostRow(post: post)
                         }
                     }
                     
-                    if postsQuery.hasNextPage {
-                        ProgressView()
-                            .onAppear {
-                                Task { try await _postsQuery.fetchNextPage() }
+                    if observer.hasNextPage {
+                        Button("Load More") {
+                            Task {
+                                try await observer.fetchNextPage()
                             }
+                        }
+                        .disabled(observer.isFetchingNextPage)
                     }
                 }
             }
@@ -1314,38 +885,50 @@ struct PostsView: View {
 }
 ```
 
-#### Key Behaviors to Implement
+#### Manual Query Management
 
-1. **Page Management**
-   - **Forward pagination**: Appends new page to end of pages array
-   - **Backward pagination**: Prepends new page to beginning of pages array
-   - **Page parameters**: Stored in parallel array with pages
-   - **Empty page handling**: Stops pagination when page param is nil
+```swift
+struct SettingsView: View {
+    @EnvironmentObject var queryClient: QueryClient
+    
+    var body: some View {
+        VStack {
+            Button("Invalidate All User Queries") {
+                Task {
+                    await queryClient.invalidateQueries(
+                        key: QueryKeys.user(id: ""),
+                        exact: false
+                    )
+                }
+            }
+            
+            Button("Clear Cache") {
+                queryClient.clear()
+            }
+        }
+    }
+}
+```
 
-2. **State Isolation**
-   - **Error states**:
-     - `isFetchNextPageError = isError && direction == 'forward'`
-     - `isFetchPreviousPageError = isError && direction == 'backward'`
-     - `isRefetchError` excludes page fetch errors
-   - **Loading states**:
-     - `isFetchingNextPage = isFetching && direction == 'forward'`
-     - `isFetchingPreviousPage = isFetching && direction == 'backward'`
-     - `isRefetching` excludes page fetching states
-   - **Direction tracking**: Uses fetchMeta to distinguish fetch types
+### Thread Safety & Concurrency
 
-3. **Refetch Behavior**
-   - **Full refetch**: Resets to initial page, fetches all pages fresh
-   - **Page fetch**: Only fetches next/previous single page
-   - **Invalidation**: Marks all existing pages as stale
-   - **Background refetch**: Maintains current pages while fetching
+```swift
+// Thread-safe cache access using actors
+actor Mutex<Value> {
+    private var value: Value
+    
+    init(_ value: Value) {
+        self.value = value
+    }
+    
+    func withLock<Result>(
+        _ body: (inout Value) throws -> Result
+    ) rethrows -> Result {
+        try body(&value)
+    }
+}
 
-4. **Page Determination**
-   - `hasNextPage`: True if `getNextPageParam` returns non-nil value
-   - `hasPreviousPage`: True if `getPreviousPageParam` exists and returns non-nil
-   - Page params passed to fetch function as context
-
-5. **Concurrency & Memory**
-   - Single fetch operation at a time per query
-   - Abort signal support for cancellation
-   - Structural sharing for performance
-   - Weak references for garbage collection
+// All public APIs are @Sendable and thread-safe
+// Query state updates are synchronized
+// Cache operations are protected by mutex
+```

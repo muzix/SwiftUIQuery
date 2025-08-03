@@ -290,15 +290,6 @@ Persistent cache provider.
 - [x] StrictMode compatibility
 - [x] React DevTools integration
 
-## SwiftUI Query Adaptation Notes
-
-### Direct Mappings
-- `useQuery` → `@Query` property wrapper
-- `useMutation` → `@Mutation` property wrapper
-- `useInfiniteQuery` → `@InfiniteQuery` property wrapper
-- `QueryClientProvider` → Environment injection
-- React hooks → Property wrappers or view modifiers
-
 ### SwiftUI-Specific Considerations
 - Replace React Suspense with SwiftUI task/async patterns
 - Use Swift actors instead of JavaScript closures for isolation

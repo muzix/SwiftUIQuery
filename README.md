@@ -35,36 +35,6 @@ Or add it through Xcode:
 2. Enter the repository URL
 3. Select the version
 
-## Usage
-
-```swift
-import SwiftUI
-import SwiftUIQuery
-
-struct ContentView: View {
-    @Query(key: "todos") var todos = fetchTodos
-    
-    var body: some View {
-        switch todos.status {
-        case .loading:
-            ProgressView()
-        case .error(let error):
-            Text("Error: \(error.localizedDescription)")
-        case .success:
-            List(todos.data ?? []) { todo in
-                Text(todo.title)
-            }
-        default:
-            EmptyView()
-        }
-    }
-}
-
-func fetchTodos() async throws -> [Todo] {
-    // Your async fetch logic here
-}
-```
-
 ## Development
 
 ### Setup
@@ -107,18 +77,6 @@ chmod +x .git/hooks/pre-commit
 ```
 
 ### Project Structure
-
-```
-SwiftUIQuery/
-├── Sources/SwiftUIQuery/     # Main library code
-├── Tests/SwiftUIQueryTests/  # Unit tests
-├── Example/                  # Demo app
-├── Documentation/            # TanStack Query reference
-├── .swiftlint.yml           # SwiftLint configuration
-├── .swiftformat             # SwiftFormat configuration
-├── Brewfile                 # Development dependencies
-└── Makefile                 # Development commands
-```
 
 ### Testing
 

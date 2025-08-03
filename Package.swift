@@ -17,7 +17,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.9.0")
+        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.9.0"),
     ],
     targets: [
         .target(

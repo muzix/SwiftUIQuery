@@ -5,7 +5,7 @@ This project is a Swift implementation of TanStack Query for SwiftUI application
 ## Documentation Structure
 
 - [principles.md](./principles.md) - Core principles, philosophy, and Swift 6 compliance
-- [api-design.md](./api-design.md) - API patterns, usage examples, and property wrappers
+- [api-design.md](./api-design.md) - API patterns, usage examples
 - [roadmap.md](./roadmap.md) - Development roadmap with phases and milestones
 - [feature-parity.md](./feature-parity.md) - Complete list of TanStack Query React features to implement
 - architecture.md - Technical architecture and component design (planned)
@@ -57,13 +57,6 @@ The `Documentation` folder contains the complete TanStack Query source code. Whe
    - Automatic refetching (mount, focus, reconnect)
    - Query invalidation and garbage collection
    - Structural sharing for performance
-
-4. **Key Implementation Order**
-   ```
-   QueryClient → QueryCache → Query → QueryObserver → @Query wrapper
-   ```
-
-## Quick Reference
 
 ### Key Requirements
 - Swift 6 strict concurrency mode compatible

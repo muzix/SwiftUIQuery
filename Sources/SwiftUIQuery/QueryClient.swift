@@ -222,6 +222,39 @@ public final class QueryClient {
         return query
     }
 
+    /// Build or get existing infinite query from cache
+    /// This is used internally by infinite query observers to get query instances
+    public func buildInfiniteQuery<TData: Sendable, TKey: QueryKey, TPageParam: Sendable & Codable>(
+        options: InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>
+    ) -> InfiniteQuery<TData, TKey, TPageParam> {
+        let queryHash = hashQueryKey(options.queryKey)
+
+        if let existingQuery = queryCache.get(queryHash: queryHash) as? InfiniteQuery<TData, TKey, TPageParam> {
+            // Cache hit - log for debugging
+            QueryLogger.shared.logCacheHit(hash: queryHash)
+
+            // Update options on existing query
+            existingQuery.setOptions(options)
+            return existingQuery
+        }
+
+        // Cache miss - create new infinite query
+        QueryLogger.shared.logCacheMiss(hash: queryHash)
+
+        let config = InfiniteQueryConfig<TData, TKey, TPageParam>(
+            queryKey: options.queryKey,
+            queryHash: queryHash,
+            options: options,
+            defaultOptions: mergeInfiniteWithDefaults(options),
+            state: nil as QueryState<InfiniteData<TData, TPageParam>>?
+        )
+
+        let query = InfiniteQuery<TData, TKey, TPageParam>(config: config, cache: queryCache)
+        queryCache.add(query)
+
+        return query
+    }
+
     /// Ensure a query exists for the given key, creating one if necessary
     private func ensureQuery<TData: Sendable, TKey: QueryKey>(
         queryKey: TKey,
@@ -444,6 +477,31 @@ public final class QueryClient {
             refetchOnAppear: options.refetchOnAppear,
             initialData: options.initialData,
             initialDataFunction: options.initialDataFunction,
+            structuralSharing: options.structuralSharing,
+            meta: options.meta,
+            enabled: options.enabled
+        )
+    }
+
+    /// Merge infinite query options with defaults
+    private func mergeInfiniteWithDefaults<TData: Sendable, TKey: QueryKey, TPageParam: Sendable & Codable>(
+        _ options: InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>
+    ) -> InfiniteQueryOptions<TData, QueryError, TKey, TPageParam> {
+        guard let defaults = defaultOptions.queries else { return options }
+
+        return InfiniteQueryOptions(
+            queryKey: options.queryKey,
+            queryFn: options.queryFn,
+            getNextPageParam: options.getNextPageParam,
+            getPreviousPageParam: options.getPreviousPageParam,
+            initialPageParam: options.initialPageParam,
+            maxPages: options.maxPages,
+            retryConfig: defaults.retryConfig ?? options.retryConfig,
+            networkMode: defaults.networkMode ?? options.networkMode,
+            staleTime: defaults.staleTime ?? options.staleTime,
+            gcTime: defaults.gcTime ?? options.gcTime,
+            refetchTriggers: defaults.refetchTriggers ?? options.refetchTriggers,
+            refetchOnAppear: options.refetchOnAppear,
             structuralSharing: options.structuralSharing,
             meta: options.meta,
             enabled: options.enabled

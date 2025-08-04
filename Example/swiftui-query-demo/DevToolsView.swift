@@ -9,57 +9,59 @@ struct DevToolsView: View {
     @State private var autoRefresh = true
 
     var body: some View {
-        NavigationView {
-            TabView(selection: $selectedTab) {
-                QueryCacheView(autoRefresh: $autoRefresh)
-                    .tabItem {
-                        Image(systemName: "tray.full")
-                        Text("Cache")
-                    }
-                    .tag(0)
+        WithPerceptionTracking {
+            NavigationView {
+                TabView(selection: $selectedTab) {
+                    QueryCacheView(autoRefresh: $autoRefresh)
+                        .tabItem {
+                            Image(systemName: "tray.full")
+                            Text("Cache")
+                        }
+                        .tag(0)
 
-                GarbageCollectionView(autoRefresh: $autoRefresh)
-                    .tabItem {
-                        Image(systemName: "trash")
-                        Text("GC")
-                    }
-                    .tag(1)
+                    GarbageCollectionView(autoRefresh: $autoRefresh)
+                        .tabItem {
+                            Image(systemName: "trash")
+                            Text("GC")
+                        }
+                        .tag(1)
 
-                QueryActionsView()
-                    .tabItem {
-                        Image(systemName: "slider.horizontal.3")
-                        Text("Actions")
-                    }
-                    .tag(2)
-            }
-            .navigationTitle("DevTools")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(autoRefresh ? "⏸️" : "▶️") {
-                        autoRefresh.toggle()
-                    }
-                    .font(.caption)
+                    QueryActionsView()
+                        .tabItem {
+                            Image(systemName: "slider.horizontal.3")
+                            Text("Actions")
+                        }
+                        .tag(2)
                 }
+                .navigationTitle("DevTools")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(autoRefresh ? "⏸️" : "▶️") {
+                            autoRefresh.toggle()
+                        }
+                        .font(.caption)
+                    }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
             }
-        }
-        .onAppear {
-            startAutoRefresh()
-        }
-        .onDisappear {
-            stopAutoRefresh()
-        }
-        .onChange(of: autoRefresh) { newValue in
-            if newValue {
+            .onAppear {
                 startAutoRefresh()
-            } else {
+            }
+            .onDisappear {
                 stopAutoRefresh()
+            }
+            .onChange(of: autoRefresh) { newValue in
+                if newValue {
+                    startAutoRefresh()
+                } else {
+                    stopAutoRefresh()
+                }
             }
         }
     }
@@ -86,6 +88,7 @@ struct QueryCacheView: View {
     @State private var searchText = ""
 
     private var filteredQueries: [AnyQuery] {
+        guard let queryClient else { return [] }
         let queries = queryClient.cache.allQueries
         if searchText.isEmpty {
             return queries.sorted { $0.queryHash < $1.queryHash }
@@ -155,9 +158,10 @@ struct CacheStatsView: View {
     @Environment(\.queryClient) private var queryClient
 
     private var stats: (total: Int, stale: Int, fresh: Int, error: Int) {
+        guard let queryClient else { return (total: 0, stale: 0, fresh: 0, error: 0) }
         let queries = queryClient.cache.allQueries
         let total = queries.count
-        let stale = queries.filter(\.isStale).count
+        let stale = queries.count(where: { $0.isStale })
         let fresh = total - stale
         let error = queries.compactMap { _ -> String? in
             // We need to access the error state somehow - this is a limitation of type erasure
@@ -169,20 +173,22 @@ struct CacheStatsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Cache Statistics")
-                .font(.headline)
-                .fontWeight(.medium)
+        WithPerceptionTracking {
+            VStack(spacing: 12) {
+                Text("Cache Statistics")
+                    .font(.headline)
+                    .fontWeight(.medium)
 
-            HStack(spacing: 20) {
-                StatItem(label: "Total", value: stats.total, color: .blue)
-                StatItem(label: "Fresh", value: stats.fresh, color: .green)
-                StatItem(label: "Stale", value: stats.stale, color: .orange)
-                StatItem(label: "Errors", value: stats.error, color: .red)
+                HStack(spacing: 20) {
+                    StatItem(label: "Total", value: stats.total, color: .blue)
+                    StatItem(label: "Fresh", value: stats.fresh, color: .green)
+                    StatItem(label: "Stale", value: stats.stale, color: .orange)
+                    StatItem(label: "Errors", value: stats.error, color: .red)
+                }
             }
+            .padding()
+            .background(Color(.systemGroupedBackground))
         }
-        .padding()
-        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -213,57 +219,59 @@ struct QueryCacheItemView: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Status indicator
-                Circle()
-                    .fill(query.isStale ? Color.orange : Color.green)
-                    .frame(width: 12, height: 12)
+        WithPerceptionTracking {
+            Button(action: onTap) {
+                HStack(spacing: 12) {
+                    // Status indicator
+                    Circle()
+                        .fill(query.isStale ? Color.orange : Color.green)
+                        .frame(width: 12, height: 12)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    // Query hash (truncated)
-                    Text(truncatedHash(query.queryHash))
-                        .font(.system(.body, design: .monospaced))
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 4) {
+                        // Query hash (truncated)
+                        Text(truncatedHash(query.queryHash))
+                            .font(.system(.body, design: .monospaced))
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
 
-                    // Last updated
-                    if let lastUpdated = query.lastUpdated {
-                        Text("Updated: \(formatRelativeTime(lastUpdated))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Never updated")
+                        // Last updated
+                        if let lastUpdated = query.lastUpdated {
+                            Text("Updated: \(formatRelativeTime(lastUpdated))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Never updated")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        // Status badge
+                        Text(query.isStale ? "STALE" : "FRESH")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(query.isStale ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
+                            .foregroundColor(query.isStale ? .orange : .green)
+                            .cornerRadius(4)
+
+                        Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    // Status badge
-                    Text(query.isStale ? "STALE" : "FRESH")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(query.isStale ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
-                        .foregroundColor(query.isStale ? .orange : .green)
-                        .cornerRadius(4)
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 4)
+                .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+                .cornerRadius(8)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
-            .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
-            .cornerRadius(8)
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
     }
 
     private func truncatedHash(_ hash: String) -> String {
@@ -282,6 +290,7 @@ struct GarbageCollectionView: View {
     @State private var gcThreshold: TimeInterval = 5 * 60 // 5 minutes default
 
     private var eligibleForGC: [AnyQuery] {
+        guard let queryClient else { return [] }
         let now = Date()
         return queryClient.cache.allQueries.filter { query in
             guard let lastUpdated = query.lastUpdated else { return true }
@@ -318,11 +327,11 @@ struct GarbageCollectionView: View {
 
                 // GC Stats
                 HStack(spacing: 20) {
-                    StatItem(label: "Total", value: queryClient.cache.allQueries.count, color: .blue)
+                    StatItem(label: "Total", value: queryClient?.cache.allQueries.count ?? 0, color: .blue)
                     StatItem(label: "Eligible for GC", value: eligibleForGC.count, color: .orange)
                     StatItem(
                         label: "Active",
-                        value: queryClient.cache.allQueries.count - eligibleForGC.count,
+                        value: (queryClient?.cache.allQueries.count ?? 0) - eligibleForGC.count,
                         color: .green
                     )
                 }
@@ -471,7 +480,7 @@ struct QueryActionsView: View {
                     color: .blue,
                     action: {
                         Task {
-                            await queryClient.refetchQueries(queryKey: nil as String?)
+                            await queryClient?.refetchQueries(queryKey: nil as String?)
                         }
                     }
                 )
@@ -482,7 +491,7 @@ struct QueryActionsView: View {
                     Text("Query Client Info")
                         .font(.headline)
 
-                    DevToolsInfoRow(label: "Total Queries", value: "\(queryClient.cache.allQueries.count)")
+                    DevToolsInfoRow(label: "Total Queries", value: "\(queryClient?.cache.allQueries.count ?? 0)")
                     DevToolsInfoRow(label: "Cache Size", value: formatCacheSize())
                 }
                 .padding(.vertical, 8)
@@ -491,7 +500,7 @@ struct QueryActionsView: View {
         .alert("Clear All Queries?", isPresented: $showingClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear", role: .destructive) {
-                queryClient.clear()
+                queryClient?.clear()
             }
         } message: {
             Text("This will remove all queries from the cache. Active queries will need to refetch their data.")
@@ -500,7 +509,7 @@ struct QueryActionsView: View {
             Button("Cancel", role: .cancel) {}
             Button("Invalidate", role: .destructive) {
                 Task {
-                    await queryClient.invalidateQueries(queryKey: nil as String?)
+                    await queryClient?.invalidateQueries(queryKey: nil as String?)
                 }
             }
         } message: {
@@ -509,7 +518,7 @@ struct QueryActionsView: View {
     }
 
     private func formatCacheSize() -> String {
-        let count = queryClient.cache.allQueries.count
+        let count = queryClient?.cache.allQueries.count ?? 0
         return "\(count) \(count == 1 ? "query" : "queries")"
     }
 }

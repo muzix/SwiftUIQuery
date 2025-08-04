@@ -410,16 +410,20 @@ extension EnvironmentValues {
 
 /// View modifier to provide a QueryClient to the environment
 public struct QueryClientProviderModifier: ViewModifier {
-    let queryClient: QueryClient
+    let queryClient: QueryClient?
+
+    private var resolvedQueryClient: QueryClient {
+        queryClient ?? QueryClientProvider.shared.queryClient
+    }
 
     public func body(content: Content) -> some View {
         content
-            .environment(\.queryClient, queryClient)
+            .environment(\.queryClient, resolvedQueryClient)
             .onAppear {
-                queryClient.mount()
+                resolvedQueryClient.mount()
             }
             .onDisappear {
-                queryClient.unmount()
+                resolvedQueryClient.unmount()
             }
     }
 }
@@ -428,7 +432,7 @@ extension View {
     /// Provide a QueryClient to all child views
     /// - Parameter queryClient: The QueryClient to provide
     /// - Returns: Modified view with QueryClient in environment
-    public func queryClient(_ queryClient: QueryClient) -> some View {
+    public func queryClient(_ queryClient: QueryClient? = nil) -> some View {
         modifier(QueryClientProviderModifier(queryClient: queryClient))
     }
 }

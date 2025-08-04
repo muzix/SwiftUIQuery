@@ -670,7 +670,7 @@ struct ErrorView: View {
 #Preview("Pokemon List") {
     NavigationView {
         ContentView()
-            .queryClient(QueryClient())
+            .queryClient()
     }
 }
 

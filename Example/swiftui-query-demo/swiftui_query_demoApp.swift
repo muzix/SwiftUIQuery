@@ -22,7 +22,7 @@ struct SwiftUIQueryDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .queryClient(QueryClient()) // Provide QueryClient to entire app
+                .queryClient() // Provide QueryClient to entire app
         }
     }
 }

@@ -426,7 +426,7 @@ struct LoadingView: View {
 #Preview("Initial Data Demo") {
     NavigationView {
         InitialDataDemoView()
-            .queryClient(QueryClient())
+            .queryClient()
     }
 }
 

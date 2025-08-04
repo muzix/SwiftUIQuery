@@ -4,7 +4,6 @@ import Perception
 
 struct DevToolsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.queryClient) private var queryClient
     @State private var selectedTab = 0
     @State private var refreshTimer: Timer?
     @State private var autoRefresh = true
@@ -12,21 +11,21 @@ struct DevToolsView: View {
     var body: some View {
         NavigationView {
             TabView(selection: $selectedTab) {
-                QueryCacheView(queryClient: queryClient, autoRefresh: $autoRefresh)
+                QueryCacheView(autoRefresh: $autoRefresh)
                     .tabItem {
                         Image(systemName: "tray.full")
                         Text("Cache")
                     }
                     .tag(0)
 
-                GarbageCollectionView(queryClient: queryClient, autoRefresh: $autoRefresh)
+                GarbageCollectionView(autoRefresh: $autoRefresh)
                     .tabItem {
                         Image(systemName: "trash")
                         Text("GC")
                     }
                     .tag(1)
 
-                QueryActionsView(queryClient: queryClient)
+                QueryActionsView()
                     .tabItem {
                         Image(systemName: "slider.horizontal.3")
                         Text("Actions")
@@ -81,7 +80,7 @@ struct DevToolsView: View {
 // MARK: - Query Cache View
 
 struct QueryCacheView: View {
-    let queryClient: QueryClient
+    @Environment(\.queryClient) private var queryClient
     @Binding var autoRefresh: Bool
     @State private var selectedQuery: AnyQuery?
     @State private var searchText = ""
@@ -110,7 +109,7 @@ struct QueryCacheView: View {
             .padding()
 
             // Cache Stats
-            CacheStatsView(queryClient: queryClient)
+            CacheStatsView()
 
             Divider()
 
@@ -153,14 +152,14 @@ struct QueryCacheView: View {
 // MARK: - Cache Stats View
 
 struct CacheStatsView: View {
-    let queryClient: QueryClient
+    @Environment(\.queryClient) private var queryClient
 
     private var stats: (total: Int, stale: Int, fresh: Int, error: Int) {
         let queries = queryClient.cache.allQueries
         let total = queries.count
         let stale = queries.filter(\.isStale).count
         let fresh = total - stale
-        let error = queries.compactMap { _ in
+        let error = queries.compactMap { _ -> String? in
             // We need to access the error state somehow - this is a limitation of type erasure
             // For now, we'll estimate based on query hash patterns or use reflection
             nil
@@ -278,7 +277,7 @@ struct QueryCacheItemView: View {
 // MARK: - Garbage Collection View
 
 struct GarbageCollectionView: View {
-    let queryClient: QueryClient
+    @Environment(\.queryClient) private var queryClient
     @Binding var autoRefresh: Bool
     @State private var gcThreshold: TimeInterval = 5 * 60 // 5 minutes default
 
@@ -442,7 +441,7 @@ struct GCEligibleItemView: View {
 // MARK: - Query Actions View
 
 struct QueryActionsView: View {
-    let queryClient: QueryClient
+    @Environment(\.queryClient) private var queryClient
     @State private var showingClearConfirmation = false
     @State private var showingInvalidateAll = false
 
@@ -472,7 +471,7 @@ struct QueryActionsView: View {
                     color: .blue,
                     action: {
                         Task {
-                            await queryClient.refetchQueries()
+                            await queryClient.refetchQueries(queryKey: nil as String?)
                         }
                     }
                 )
@@ -501,7 +500,7 @@ struct QueryActionsView: View {
             Button("Cancel", role: .cancel) {}
             Button("Invalidate", role: .destructive) {
                 Task {
-                    await queryClient.invalidateQueries()
+                    await queryClient.invalidateQueries(queryKey: nil as String?)
                 }
             }
         } message: {

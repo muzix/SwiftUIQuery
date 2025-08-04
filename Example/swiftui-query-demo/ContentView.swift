@@ -12,16 +12,110 @@ import Perception
 // MARK: - Main Demo View
 
 struct ContentView: View {
+    @State private var showDevTools = false
+
     var body: some View {
         NavigationView {
-            PokemonListView()
+            VStack(spacing: 24) {
+                VStack(spacing: 16) {
+                    Text("🔍")
+                        .font(.system(size: 60))
+
+                    Text("SwiftUI Query Demo")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+
+                    Text("Explore different query patterns and features")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
+
+                VStack(spacing: 16) {
+                    NavigationLink(destination: PokemonListView()) {
+                        DemoButton(
+                            icon: "list.bullet.rectangle",
+                            title: "Pokemon List",
+                            description: "Browse Pokemon with caching and infinite loading"
+                        )
+                    }
+
+                    NavigationLink(destination: PokemonSearchView()) {
+                        DemoButton(
+                            icon: "magnifyingglass",
+                            title: "Search Pokemon",
+                            description: "Real-time search with throttling and error handling"
+                        )
+                    }
+
+                    NavigationLink(destination: InitialDataDemoView()) {
+                        DemoButton(
+                            icon: "clock.arrow.circlepath",
+                            title: "Initial Data",
+                            description: "Queries with pre-populated cache data"
+                        )
+                    }
+                }
+                .padding(.horizontal)
+
+                Spacer()
+            }
+            .navigationTitle("SwiftUI Query")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("🛠️") {
+                        showDevTools = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showDevTools) {
+                DevToolsView()
+            }
         }
+    }
+}
+
+struct DemoButton: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(.blue)
+                .frame(width: 30)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color(.systemGroupedBackground))
+        .cornerRadius(12)
     }
 }
 
 // MARK: - Pokemon List View
 
 struct PokemonListView: View {
+    @State private var showDevTools = false
+
     var body: some View {
         WithPerceptionTracking {
             UseQuery(
@@ -61,12 +155,14 @@ struct PokemonListView: View {
             }
             .navigationTitle("Pokemon")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavigationLink("Initial Data", destination: InitialDataDemoView())
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink("Search", destination: PokemonSearchView())
+                    Button("🛠️") {
+                        showDevTools = true
+                    }
                 }
+            }
+            .sheet(isPresented: $showDevTools) {
+                DevToolsView()
             }
         }
     }
@@ -143,6 +239,7 @@ struct PokemonListRow: View {
 
 struct PokemonDetailView: View {
     let pokemonId: Int
+    @State private var showDevTools = false
 
     var body: some View {
         WithPerceptionTracking {
@@ -179,6 +276,16 @@ struct PokemonDetailView: View {
                 .navigationBarTitleDisplayMode(.large)
                 .refreshable {
                     _ = try? await result.refetch()
+                }
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("🛠️") {
+                            showDevTools = true
+                        }
+                    }
+                }
+                .sheet(isPresented: $showDevTools) {
+                    DevToolsView()
                 }
             }
         }
@@ -324,6 +431,7 @@ struct PokemonSearchView: View {
     @State private var searchText = ""
     @State private var searchKey = ""
     @State private var searchTask: Task<Void, Never>?
+    @State private var showDevTools = false
 
     var body: some View {
         WithPerceptionTracking {
@@ -466,6 +574,16 @@ struct PokemonSearchView: View {
                 }
             }
             .navigationTitle("Search Pokemon")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("🛠️") {
+                        showDevTools = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showDevTools) {
+                DevToolsView()
+            }
         }
         .onDisappear {
             // Cancel any pending search task when view disappears

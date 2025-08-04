@@ -14,6 +14,7 @@ import Perception
 struct InitialDataDemoView: View {
     @State private var selectedPokemonId = 1
     @State private var showQuickAccess = true
+    @State private var showDevTools = false
 
     // Mock initial data for demonstration
     private let initialPokemonData = Pokemon(
@@ -204,6 +205,16 @@ struct InitialDataDemoView: View {
         }
         .navigationTitle("Initial Data Demo")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("🛠️") {
+                    showDevTools = true
+                }
+            }
+        }
+        .sheet(isPresented: $showDevTools) {
+            DevToolsView()
+        }
     }
 }
 

@@ -61,3 +61,13 @@ func formatStatName(_ name: String) -> String {
     default: return name.capitalized
     }
 }
+
+// MARK: - Date Formatting
+
+func formatLastUpdated(_ date: Date?) -> String {
+    guard let date else { return "Never" }
+
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .short
+    return formatter.localizedString(for: date, relativeTo: Date())
+}

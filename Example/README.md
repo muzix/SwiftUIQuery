@@ -28,7 +28,58 @@ This demo showcases real-world usage of SwiftUI Query with the Pokemon API. It d
 
 1. **Open the Project**: Open `Example/swiftui-query-demo.xcodeproj` in Xcode
 2. **Build and Run**: Press Cmd+R to build and run the demo
-3. **Explore**: Browse Pokemon, tap for details, use search
+3. **Watch the Console**: The demo has cache logging enabled - see SwiftUI Query in action!
+4. **Explore**: Browse Pokemon, tap for details, use search
+
+## 📊 Cache Logging in Action
+
+This demo has **cache logging enabled** by default! Watch the Xcode console to see how SwiftUI Query optimizes your app's data layer in real-time.
+
+### What You'll See
+
+#### Cache Operations
+```
+🚀 SwiftUI Query Demo Started - Cache logging enabled!
+💡 Watch the console to see cache hits, misses, and state changes
+
+📝 Query cache miss for key hash: "pokemon-list" - creating new query
+🔄 QueryObserver switching to query hash: "pokemon-list"
+💾 Setting data for query hash: "pokemon-list"
+🔄 Query state updated (data changed) for hash: "pokemon-list"
+```
+
+#### Cache Efficiency
+```
+🎯 Query cache hit for key hash: "pokemon-list"
+👁️ QueryObserver reusing existing query hash: "pokemon-list"
+📊 QueryObserver reading query state for hash: "pokemon-list"
+```
+
+#### Query State Changes
+```
+🔄 Query state updated (status changed) for hash: "pokemon-1"
+🗑️ Invalidating query cache for key hash: "pokemon-list"
+🔄 Resetting query cache for hash: "pokemon-search-pikachu"
+```
+
+### Try These Interactions
+- **Navigate between screens** → See cache hits when returning
+- **Pull to refresh** → Watch invalidation and refetch
+- **Search Pokemon** → New cache entries for each search term
+- **Scroll the list** → Efficient sprite loading with individual caching
+- **Leave and return to app** → Background refetch on focus
+
+### Disable Logging
+For production-like behavior, modify `swiftui_query_demoApp.swift`:
+```swift
+init() {
+    // Disable cache logging
+    // QueryLogger.shared.enableAll()
+    
+    // Or enable only specific components
+    // QueryLogger.shared.enableQueryClientOnly()
+}
+```
 
 ## 🔍 Key Code Examples
 

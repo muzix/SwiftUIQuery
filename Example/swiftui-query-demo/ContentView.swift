@@ -345,7 +345,7 @@ struct PokemonSearchView: View {
                     UseQuery(
                         queryKey: "pokemon-search-\(searchKey)",
                         queryFn: { _ in try await PokemonAPI.searchPokemon(name: searchKey) },
-                        staleTime: 5 * 60,
+                        staleTime: 5, // 5 seconds for demo purposes - easier to see stale status
                         enabled: !searchKey.isEmpty
                     ) { result in
                         if result.isLoading, result.error == nil {
@@ -405,7 +405,38 @@ struct PokemonSearchView: View {
                             }
                         } else if let pokemon = result.data {
                             ScrollView {
-                                PokemonDetailContent(pokemon: pokemon)
+                                VStack(alignment: .leading, spacing: 16) {
+                                    // Stale status indicator
+                                    HStack {
+                                        Circle()
+                                            .fill(result.isStale ? Color.orange : Color.green)
+                                            .frame(width: 8, height: 8)
+
+                                        Text(result.isStale ? "Data is stale" : "Data is fresh")
+                                            .font(.caption)
+                                            .foregroundColor(result.isStale ? .orange : .green)
+
+                                        Spacer()
+
+                                        if result.isStale {
+                                            Button("Refresh") {
+                                                Task {
+                                                    _ = try? await result.refetch()
+                                                }
+                                            }
+                                            .font(.caption)
+                                            .buttonStyle(.bordered)
+                                        }
+
+                                        Text("Last updated: \(formatLastUpdated(result.dataUpdatedAt))")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal)
+                                    .padding(.top)
+
+                                    PokemonDetailContent(pokemon: pokemon)
+                                }
                             }
                         }
                     }

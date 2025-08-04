@@ -53,7 +53,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
     // MARK: - Private Properties
 
     /// Query observer that manages the query lifecycle
-    @State private var observer: QueryObserver<TData, TKey>
+    @StateObject private var observer: QueryObserver<TData, TKey>
 
     /// Current query options (can change during view lifecycle)
     private let options: QueryOptions<TData, TKey>
@@ -89,7 +89,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         self.queryClient = queryClient
         // Note: Environment client will be resolved in body, use passed client or shared for initial observer
         let client = queryClient ?? QueryClientProvider.shared.queryClient
-        self._observer = State(initialValue: QueryObserver(client: client, options: options))
+        self._observer = StateObject(wrappedValue: QueryObserver(client: client, options: options))
         self.content = content
     }
 
@@ -131,7 +131,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         self.options = options
         self.queryClient = queryClient
         let client = queryClient ?? QueryClientProvider.shared.queryClient
-        self._observer = State(initialValue: QueryObserver(client: client, options: options))
+        self._observer = StateObject(wrappedValue: QueryObserver(client: client, options: options))
         self.content = content
     }
 
@@ -152,12 +152,12 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         }
         .onAppear {
             // Use environment client if available, otherwise keep current observer
-            let finalClient = environmentQueryClient ?? queryClient ?? QueryClientProvider.shared.queryClient
-            if observer.client !== finalClient {
-                // Create new observer with correct client
-                let newObserver = QueryObserver(client: finalClient, options: options)
-                observer = newObserver
-            }
+//            let finalClient = environmentQueryClient ?? queryClient ?? QueryClientProvider.shared.queryClient
+//            if observer.client !== finalClient {
+//                // Create new observer with correct client
+//                let newObserver = QueryObserver(client: finalClient, options: options)
+//                observer = newObserver
+//            }
 
             // Update observer options to current options
             observer.setOptions(options)
@@ -166,9 +166,43 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         .onDisappear {
             observer.unsubscribe()
         }
-        .onChange(of: options.queryKey.queryHash) { _ in
-            // Update observer options when query key changes
-            observer.setOptions(options)
+        .onChange(of: options.queryKey) { newKey in
+            let newOptions = QueryOptions<TData, TKey>(
+                queryKey: newKey,
+                queryFn: options.queryFn,
+                retryConfig: options.retryConfig,
+                networkMode: options.networkMode,
+                staleTime: options.staleTime,
+                gcTime: options.gcTime,
+                refetchTriggers: options.refetchTriggers,
+                refetchOnAppear: options.refetchOnAppear,
+                initialData: options.initialData,
+                initialDataFunction: options.initialDataFunction,
+                structuralSharing: options.structuralSharing,
+                meta: options.meta,
+                enabled: options.enabled
+            )
+            observer.setOptions(newOptions)
+        }
+        .onChange(of: options.enabled) { newEnabled in
+            // Update observer options when enabled state changes
+            // Create new options using the new enabled value
+            let newOptions = QueryOptions<TData, TKey>(
+                queryKey: options.queryKey,
+                queryFn: options.queryFn,
+                retryConfig: options.retryConfig,
+                networkMode: options.networkMode,
+                staleTime: options.staleTime,
+                gcTime: options.gcTime,
+                refetchTriggers: options.refetchTriggers,
+                refetchOnAppear: options.refetchOnAppear,
+                initialData: options.initialData,
+                initialDataFunction: options.initialDataFunction,
+                structuralSharing: options.structuralSharing,
+                meta: options.meta,
+                enabled: newEnabled // Use the new enabled value from closure
+            )
+            observer.setOptions(newOptions)
         }
     }
 }
@@ -214,7 +248,7 @@ extension UseQuery {
         self.options = options
         self.queryClient = queryClient
         let client = queryClient ?? QueryClientProvider.shared.queryClient
-        self._observer = State(initialValue: QueryObserver(client: client, options: options))
+        self._observer = StateObject(wrappedValue: QueryObserver(client: client, options: options))
         self.content = content
     }
 
@@ -256,7 +290,7 @@ extension UseQuery {
         self.options = options
         self.queryClient = queryClient
         let client = queryClient ?? QueryClientProvider.shared.queryClient
-        self._observer = State(initialValue: QueryObserver(client: client, options: options))
+        self._observer = StateObject(wrappedValue: QueryObserver(client: client, options: options))
         self.content = content
     }
 }

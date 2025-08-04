@@ -152,8 +152,10 @@ public final class QueryClient {
     ) -> TData? {
         let queryHash = hashQueryKey(queryKey)
         guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> else {
+            QueryLogger.shared.logDataCacheMiss(hash: queryHash)
             return nil
         }
+        QueryLogger.shared.logDataCacheHit(hash: queryHash)
         return query.state.data
     }
 
@@ -174,8 +176,10 @@ public final class QueryClient {
     ) -> QueryState<TData>? {
         let queryHash = hashQueryKey(queryKey)
         guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> else {
+            QueryLogger.shared.logStateCacheMiss(hash: queryHash)
             return nil
         }
+        QueryLogger.shared.logStateCacheHit(hash: queryHash)
         return query.state
     }
 
@@ -187,12 +191,17 @@ public final class QueryClient {
         let queryHash = hashQueryKey(options.queryKey)
 
         if let existingQuery = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> {
+            // Cache hit - log for debugging
+            QueryLogger.shared.logCacheHit(hash: queryHash)
+
             // Update options on existing query
             existingQuery.setOptions(options)
             return existingQuery
         }
 
-        // Create new query
+        // Cache miss - create new query
+        QueryLogger.shared.logCacheMiss(hash: queryHash)
+
         let config = QueryConfig<TData, TKey>(
             queryKey: options.queryKey,
             queryHash: queryHash,

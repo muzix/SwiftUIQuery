@@ -85,7 +85,7 @@ public struct QueryObserverResult<TData: Sendable> {
 /// This is the bridge between the core Query class and SwiftUI reactive updates
 @MainActor
 @Perceptible
-public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObserver {
+public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObserver, ObservableObject {
     // MARK: - Public Properties
 
     /// Unique identifier for this observer
@@ -282,6 +282,8 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
         let newQuery = client.buildQuery(options: options)
 
         if currentQuery !== newQuery {
+            QueryLogger.shared.logObserverSwitchQuery(hash: newQuery.queryHash)
+
             // Unsubscribe from old query
             if isSubscribed {
                 currentQuery?.removeObserver(self)
@@ -294,6 +296,8 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
             if isSubscribed {
                 currentQuery?.addObserver(self)
             }
+        } else {
+            QueryLogger.shared.logObserverReuseQuery(hash: newQuery.queryHash)
         }
     }
 
@@ -308,7 +312,10 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
         }
 
         let queryState = query.state
-        let isStale = query.isStale
+        // Calculate staleness based on timestamp comparison
+        let isStale = isEnabled() ? query.isStaleByTime(staleTime: options.staleTime) : false
+
+        QueryLogger.shared.logObserverReadState(hash: query.queryHash)
 
         // Create new result - all computed properties are handled by QueryObserverResult
         result = QueryObserverResult(
@@ -333,6 +340,9 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
                 // Update result to reflect new state
                 updateResult()
 
+                // Update timers after successful fetch
+                updateTimers()
+
                 // Return the current data from the updated state
                 return query.state.data
             } catch {
@@ -349,7 +359,8 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
         guard options.enabled else { return false }
 
         let hasData = query.state.data != nil
-        let isStale = query.isStale
+        // Use timestamp-based stale checking
+        let isStale = query.isStaleByTime(staleTime: options.staleTime)
 
         // Always fetch if no data
         if !hasData {
@@ -399,7 +410,8 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
         guard options.enabled else { return false }
         guard trigger else { return false }
 
-        let isStale = query.isStale
+        // Use timestamp-based stale checking
+        let isStale = query.isStaleByTime(staleTime: options.staleTime)
         return isStale
     }
 
@@ -407,11 +419,31 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     private func updateTimers() {
         clearTimers()
 
-        // Set up stale timeout
-        if options.staleTime > 0, let query = currentQuery, query.state.data != nil {
-            let staleTime = options.staleTime
-            staleTimer = Timer.scheduledTimer(withTimeInterval: staleTime, repeats: false) { [weak self] _ in
+        // Set up stale timeout timer only for UI updates when data transitions from fresh to stale
+        // This matches TanStack Query's behavior - the timer is only for triggering UI updates
+        guard options.staleTime > 0,
+              let query = currentQuery,
+              query.state.data != nil,
+              query.state.dataUpdatedAt > 0 else {
+            // Don't set timer if:
+            // - staleTime is 0 (data is immediately stale)
+            // - no current query
+            // - no data yet
+            // - dataUpdatedAt is 0 (query never executed)
+            return
+        }
+
+        // Calculate time until stale
+        let timeSinceUpdate = Date().timeIntervalSince1970 - (Double(query.state.dataUpdatedAt) / 1000.0)
+        let timeUntilStale = options.staleTime - timeSinceUpdate
+
+        // Only set timer if data is currently fresh and will become stale
+        if timeUntilStale > 0 {
+            // Add 1ms buffer to handle timing precision issues (matching TanStack Query)
+            let timeout = timeUntilStale + 0.001
+            staleTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
                 Task { @MainActor [weak self] in
+                    // Update result to reflect stale state change
                     self?.updateResult()
                 }
             }

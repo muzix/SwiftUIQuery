@@ -163,6 +163,23 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         return state.data == nil || state.isInvalidated
     }
 
+    /// Check if query is stale based on time elapsed since last update
+    /// Based on TanStack Query's isStaleByTime implementation
+    public func isStaleByTime(staleTime: TimeInterval = 0) -> Bool {
+        // No data is always stale
+        guard state.data != nil else { return true }
+
+        // If the query is invalidated, it is stale
+        if state.isInvalidated { return true }
+
+        // Static queries (staleTime < 0) are never stale
+        if staleTime < 0 { return false }
+
+        // Check if enough time has passed since last update
+        let timeSinceUpdate = Date().timeIntervalSince1970 - (Double(state.dataUpdatedAt) / 1000.0)
+        return timeSinceUpdate >= staleTime
+    }
+
     public var lastUpdated: Date? {
         guard state.dataUpdatedAt > 0 else { return nil }
         return Date(timeIntervalSince1970: Double(state.dataUpdatedAt) / 1000.0)
@@ -204,6 +221,15 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     private func setState(_ newState: QueryState<TData>) {
         let oldState = state
         state = newState
+
+        // Log state transitions for cache activity
+        let dataChanged = (oldState.data == nil) != (newState.data == nil) || oldState.dataUpdateCount != newState
+            .dataUpdateCount
+        if dataChanged {
+            QueryLogger.shared.logQueryStateDataChanged(hash: queryHash)
+        } else if oldState.status != newState.status || oldState.fetchStatus != newState.fetchStatus {
+            QueryLogger.shared.logQueryStateStatusChanged(hash: queryHash)
+        }
 
         // Notify observers of state change
         notifyObservers()
@@ -313,6 +339,7 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     /// Set data directly (for imperative updates)
     @discardableResult
     public func setData(_ newData: TData) -> TData {
+        QueryLogger.shared.logQueryDataSet(hash: queryHash)
         dispatch(.success(data: newData, dataUpdatedAt: nil, manual: true))
         return newData
     }
@@ -320,12 +347,14 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     /// Invalidate the query (mark as stale)
     public func invalidate() {
         if !state.isInvalidated {
+            QueryLogger.shared.logQueryInvalidation(hash: queryHash)
             dispatch(.invalidate)
         }
     }
 
     /// Reset query to initial state
     public func reset() {
+        QueryLogger.shared.logQueryReset(hash: queryHash)
         cancel()
         setState(initialState)
     }

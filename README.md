@@ -1,6 +1,8 @@
 # SwiftUI Query
 
-A Swift implementation of TanStack Query for SwiftUI applications, providing powerful asynchronous state management with caching, synchronization, and infinite queries.
+A Swift implementation of [TanStack Query](https://tanstack.com/query) for SwiftUI applications, providing powerful asynchronous state management with caching, synchronization, and infinite queries.
+
+> **Inspired by TanStack Query** - This library brings the beloved patterns and features of TanStack Query (formerly React Query) to the Swift ecosystem, adapted for SwiftUI and Swift's concurrency model.
 
 ## Features
 
@@ -213,4 +215,16 @@ The project follows TanStack Query's architecture. Key documentation:
 
 ## Acknowledgments
 
-This project is inspired by [TanStack Query](https://tanstack.com/query) and aims to bring its powerful features to the Swift ecosystem.
+This project is heavily inspired by [TanStack Query](https://tanstack.com/query) (formerly React Query), created by [Tanner Linsley](https://github.com/tannerlinsley) and maintained by the TanStack team. We aim to bring the same powerful patterns, architectural principles, and developer experience to the Swift ecosystem.
+
+### TanStack Query Features Implemented
+
+- ✅ **Query Caching** - Automatic request deduplication and intelligent caching
+- ✅ **Background Refetching** - Stale-while-revalidate pattern
+- ✅ **Automatic Retries** - Configurable retry logic with exponential backoff  
+- ✅ **Infinite Queries** - Built-in pagination and infinite scrolling support
+- ✅ **Lifecycle Management** - Automatic refetch on mount, focus, and reconnect
+- ✅ **Garbage Collection** - Smart cleanup of unused query data
+- ✅ **DevTools Integration** - Built-in debugging and inspection tools
+
+Special thanks to the TanStack Query team for creating such an excellent library that has transformed how developers handle server state management. This Swift implementation follows the same core principles while embracing Swift's type system and concurrency model.

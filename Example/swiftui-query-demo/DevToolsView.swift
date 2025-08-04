@@ -483,8 +483,8 @@ struct QueryActionsView: View {
                     Text("Query Client Info")
                         .font(.headline)
 
-                    InfoRow(label: "Total Queries", value: "\(queryClient.cache.allQueries.count)")
-                    InfoRow(label: "Cache Size", value: formatCacheSize())
+                    DevToolsInfoRow(label: "Total Queries", value: "\(queryClient.cache.allQueries.count)")
+                    DevToolsInfoRow(label: "Cache Size", value: formatCacheSize())
                 }
                 .padding(.vertical, 8)
             }
@@ -548,7 +548,7 @@ struct ActionButton: View {
     }
 }
 
-struct InfoRow: View {
+struct DevToolsInfoRow: View {
     let label: String
     let value: String
 

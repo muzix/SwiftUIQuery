@@ -120,16 +120,19 @@ struct PokemonListView: View {
 
     var body: some View {
         WithPerceptionTracking {
+            // Capture the initial offset value before the closures
+            let capturedOffset = initialOffset
+
             UseInfiniteQuery(
                 queryKey: "pokemon-infinite-list-\(initialOffset)", // Include offset in key for cache separation
                 queryFn: { _, pageParam in
-                    let offset = pageParam ?? initialOffset
+                    let offset = pageParam ?? capturedOffset
                     return try await PokemonAPI.fetchPokemonPage(offset: offset)
                 },
                 getNextPageParam: { pages in
                     // Calculate next offset based on current pages and initial offset
                     let currentTotal = pages.reduce(0) { total, page in total + page.results.count }
-                    let nextOffset = initialOffset + currentTotal
+                    let nextOffset = capturedOffset + currentTotal
                     let lastPage = pages.last
 
                     // If we have next URL or haven't reached the total count, continue pagination
@@ -138,7 +141,7 @@ struct PokemonListView: View {
                     }
                     return nil // No more pages
                 },
-                initialPageParam: initialOffset,
+                initialPageParam: capturedOffset,
                 staleTime: 5 * 60 // 5 minutes before considered stale
             ) { result in
                 if result.isLoading, result.data?.pages.isEmpty != false {

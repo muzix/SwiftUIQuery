@@ -76,7 +76,7 @@ enum PokemonAPI {
         let url = URL(safeString: "https://pokeapi.co/api/v2/pokemon/\(id)")
         print("🔥 API CALL: Fetching Pokemon with ID \(id) from \(url)")
         do {
-            try await Task.sleep(nanoseconds: UInt64(5 * 1_000_000_000))
+            try await Task.sleep(nanoseconds: UInt64(1 * 1_000_000_000)) // Reduced delay for better UX
             let (data, _) = try await URLSession.shared.data(from: url)
             let pokemon = try JSONDecoder().decode(Pokemon.self, from: data)
             print("✅ API SUCCESS: Fetched Pokemon '\(pokemon.name)' (ID: \(id))")
@@ -99,6 +99,15 @@ enum PokemonAPI {
             print("❌ API ERROR: Failed to fetch Pokemon list - \(error)")
             throw error
         }
+    }
+
+    // MARK: - Infinite Query Support
+
+    /// Fetch Pokemon list page for infinite scrolling
+    /// - Parameter pageParam: The offset for pagination (0 for first page, 20 for second, etc.)
+    /// - Returns: PokemonList containing results for this page
+    static func fetchPokemonPage(offset: Int) async throws -> PokemonList {
+        return try await fetchPokemonList(limit: 20, offset: offset)
     }
 
     static func searchPokemon(name: String) async throws -> Pokemon {

@@ -37,7 +37,7 @@ struct ContentView: View {
                         DemoButton(
                             icon: "list.bullet.rectangle",
                             title: "Pokemon List",
-                            description: "Browse Pokemon with caching and infinite loading"
+                            description: "Infinite scrolling Pokemon list with automatic pagination"
                         )
                     }
 
@@ -118,12 +118,27 @@ struct PokemonListView: View {
 
     var body: some View {
         WithPerceptionTracking {
-            UseQuery(
-                queryKey: "pokemon-list",
-                queryFn: { _ in try await PokemonAPI.fetchPokemonList(limit: 50) },
-                staleTime: 5 // 5 minutes before considered stale
+            UseInfiniteQuery(
+                queryKey: "pokemon-infinite-list",
+                queryFn: { _, pageParam in
+                    try await PokemonAPI.fetchPokemonPage(offset: pageParam ?? 0)
+                },
+                getNextPageParam: { pages in
+                    // Calculate next offset based on current pages
+                    let currentTotal = pages.reduce(0) { total, page in total + page.results.count }
+                    let lastPage = pages.last
+
+                    // If we have next URL or haven't reached the total count, continue pagination
+                    if let lastPage, lastPage.next != nil {
+                        return currentTotal
+                    }
+                    return nil // No more pages
+                },
+                initialPageParam: 0,
+                staleTime: 5 * 60 // 5 minutes before considered stale
             ) { result in
-                if result.isLoading {
+                if result.isLoading, result.data?.pages.isEmpty != false {
+                    // Initial loading state
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.2)
@@ -131,16 +146,80 @@ struct PokemonListView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = result.error {
+                } else if let error = result.error, result.data?.pages.isEmpty != false {
+                    // Error state when no data is loaded
                     ErrorView(error: error) {
                         Task {
                             _ = try? await result.refetch()
                         }
                     }
-                } else if let pokemonList = result.data {
-                    List(pokemonList.results) { pokemon in
-                        NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.pokemonId)) {
-                            PokemonListRow(pokemon: pokemon)
+                } else if let infiniteData = result.data {
+                    // Show the list with infinite scrolling
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            // Render all Pokemon from all pages
+                            ForEach(infiniteData.pages.indices, id: \.self) { pageIndex in
+                                let page = infiniteData.pages[pageIndex]
+                                ForEach(page.results) { pokemon in
+                                    NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.pokemonId)) {
+                                        PokemonListRow(pokemon: pokemon)
+                                            .padding(.horizontal)
+                                            .padding(.vertical, 8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+
+                                    // Add divider except for last item
+                                    if pokemon.id != page.results.last?.id || pageIndex != infiniteData.pages
+                                        .count - 1 {
+                                        Divider()
+                                            .padding(.horizontal)
+                                    }
+                                }
+                            }
+
+                            // Load more section
+                            if result.hasNextPage {
+                                VStack(spacing: 12) {
+                                    if result.isFetchingNextPage {
+                                        HStack(spacing: 8) {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                            Text("Loading more Pokemon...")
+                                                .foregroundColor(.secondary)
+                                                .font(.subheadline)
+                                        }
+                                        .padding()
+                                    } else {
+                                        Button("Load More Pokemon") {
+                                            Task {
+                                                _ = await result.fetchNextPage()
+                                            }
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .padding()
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .onAppear {
+                                    // Auto-load when this view appears (infinite scrolling)
+                                    if !result.isFetchingNextPage {
+                                        Task {
+                                            _ = await result.fetchNextPage()
+                                        }
+                                    }
+                                }
+                            } else {
+                                // End of list indicator
+                                VStack(spacing: 8) {
+                                    Text("🎉")
+                                        .font(.title)
+                                    Text("You've seen all available Pokemon!")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                            }
                         }
                     }
                     .refreshable {

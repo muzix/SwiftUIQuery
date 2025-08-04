@@ -130,7 +130,7 @@ public struct InfiniteQueryObserverResult<TData: Sendable, TPageParam: Sendable 
 public final class InfiniteQueryObserver<
     TData: Sendable,
     TKey: QueryKey,
-    TPageParam: Sendable & Codable
+    TPageParam: Sendable & Codable & Equatable
 >: AnyQueryObserver, ObservableObject {
     // MARK: - Public Properties
 

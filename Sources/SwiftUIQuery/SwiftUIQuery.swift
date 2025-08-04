@@ -253,7 +253,7 @@ public enum NetworkMode: String, Sendable, Codable {
 
 /// Configuration for when to refetch queries in iOS/SwiftUI
 /// iOS-specific equivalent to TanStack Query's refetch triggers
-public struct RefetchTriggers: Sendable, Codable {
+public struct RefetchTriggers: Sendable, Codable, Equatable {
     /// Refetch when view appears (SwiftUI .onAppear)
     public let onAppear: Bool
     /// Refetch when app becomes active from background
@@ -273,7 +273,7 @@ public struct RefetchTriggers: Sendable, Codable {
 
 /// Enum specifying when to refetch on view appear
 /// Maps to SwiftUI .onAppear behavior
-public enum RefetchOnAppear: Sendable, Codable {
+public enum RefetchOnAppear: Sendable, Codable, Equatable {
     /// Always refetch when view appears
     case always
     /// Only refetch if data is stale when view appears
@@ -421,8 +421,8 @@ public struct InfiniteQueryOptions<
     TData: Sendable,
     TError: Error & Sendable & Codable,
     TKey: QueryKey,
-    TPageParam: Sendable & Codable
->: Sendable {
+    TPageParam: Sendable & Codable & Equatable
+>: Sendable, Equatable {
     /// The query key that uniquely identifies this query
     public let queryKey: TKey
     /// The function that will be called to fetch data pages
@@ -453,6 +453,20 @@ public struct InfiniteQueryOptions<
     public let meta: QueryMeta?
     /// Whether this query is enabled (will fetch automatically)
     public let enabled: Bool
+
+    public static func == (
+        lhs: InfiniteQueryOptions<TData, TError, TKey, TPageParam>,
+        rhs: InfiniteQueryOptions<TData, TError, TKey, TPageParam>
+    ) -> Bool {
+        lhs.queryKey == rhs.queryKey &&
+            lhs.initialPageParam == rhs.initialPageParam &&
+            lhs.maxPages == rhs.maxPages &&
+            lhs.staleTime == rhs.staleTime &&
+            lhs.gcTime == rhs.gcTime &&
+            lhs.refetchTriggers == rhs.refetchTriggers &&
+            lhs.refetchOnAppear == rhs.refetchOnAppear &&
+            lhs.enabled == rhs.enabled
+    }
 
     public init(
         queryKey: TKey,

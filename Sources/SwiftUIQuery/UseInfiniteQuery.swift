@@ -129,7 +129,7 @@ public struct UseInfiniteQueryResult<TData: Sendable, TPageParam: Sendable & Cod
 public struct UseInfiniteQuery<
     TData: Sendable,
     TKey: QueryKey,
-    TPageParam: Sendable & Codable,
+    TPageParam: Sendable & Codable & Equatable,
     Content: View
 >: View {
     // MARK: - Private Properties
@@ -282,69 +282,74 @@ public struct UseInfiniteQuery<
         .onDisappear {
             observer.unsubscribe()
         }
-        .onChange(of: options.queryKey) { newKey in
-            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
-                queryKey: newKey,
-                queryFn: options.queryFn,
-                getNextPageParam: options.getNextPageParam,
-                getPreviousPageParam: options.getPreviousPageParam,
-                initialPageParam: options.initialPageParam,
-                maxPages: options.maxPages,
-                retryConfig: options.retryConfig,
-                networkMode: options.networkMode,
-                staleTime: options.staleTime,
-                gcTime: options.gcTime,
-                refetchTriggers: options.refetchTriggers,
-                refetchOnAppear: options.refetchOnAppear,
-                structuralSharing: options.structuralSharing,
-                meta: options.meta,
-                enabled: options.enabled
-            )
+        .onChange(of: options) { newOptions in
             observer.setOptions(newOptions)
         }
-        .onChange(of: options.enabled) { newEnabled in
-            // Update observer options when enabled state changes
-            // Create new options using the new enabled value
-            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
-                queryKey: options.queryKey,
-                queryFn: options.queryFn,
-                getNextPageParam: options.getNextPageParam,
-                getPreviousPageParam: options.getPreviousPageParam,
-                initialPageParam: options.initialPageParam,
-                maxPages: options.maxPages,
-                retryConfig: options.retryConfig,
-                networkMode: options.networkMode,
-                staleTime: options.staleTime,
-                gcTime: options.gcTime,
-                refetchTriggers: options.refetchTriggers,
-                refetchOnAppear: options.refetchOnAppear,
-                structuralSharing: options.structuralSharing,
-                meta: options.meta,
-                enabled: newEnabled
-            )
-            observer.setOptions(newOptions)
-        }
-        .onChange(of: options.staleTime) { newStaleTime in
-            // Update observer options when staleTime changes
-            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
-                queryKey: options.queryKey,
-                queryFn: options.queryFn,
-                getNextPageParam: options.getNextPageParam,
-                getPreviousPageParam: options.getPreviousPageParam,
-                initialPageParam: options.initialPageParam,
-                maxPages: options.maxPages,
-                retryConfig: options.retryConfig,
-                networkMode: options.networkMode,
-                staleTime: newStaleTime,
-                gcTime: options.gcTime,
-                refetchTriggers: options.refetchTriggers,
-                refetchOnAppear: options.refetchOnAppear,
-                structuralSharing: options.structuralSharing,
-                meta: options.meta,
-                enabled: options.enabled
-            )
-            observer.setOptions(newOptions)
-        }
+//        .onChange(of: options.enabled) { newEnabled in
+//            // Update observer options when enabled state changes
+//            // Create new options using the new enabled value
+//            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
+//                queryKey: options.queryKey,
+//                queryFn: options.queryFn,
+//                getNextPageParam: options.getNextPageParam,
+//                getPreviousPageParam: options.getPreviousPageParam,
+//                initialPageParam: options.initialPageParam,
+//                maxPages: options.maxPages,
+//                retryConfig: options.retryConfig,
+//                networkMode: options.networkMode,
+//                staleTime: options.staleTime,
+//                gcTime: options.gcTime,
+//                refetchTriggers: options.refetchTriggers,
+//                refetchOnAppear: options.refetchOnAppear,
+//                structuralSharing: options.structuralSharing,
+//                meta: options.meta,
+//                enabled: newEnabled
+//            )
+//            observer.setOptions(newOptions)
+//        }
+//        .onChange(of: options.initialPageParam) { newInitialPageParam in
+//            // Update observer options when enabled state changes
+//            // Create new options using the new enabled value
+//            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
+//                queryKey: options.queryKey,
+//                queryFn: options.queryFn,
+//                getNextPageParam: options.getNextPageParam,
+//                getPreviousPageParam: options.getPreviousPageParam,
+//                initialPageParam: newInitialPageParam,
+//                maxPages: options.maxPages,
+//                retryConfig: options.retryConfig,
+//                networkMode: options.networkMode,
+//                staleTime: options.staleTime,
+//                gcTime: options.gcTime,
+//                refetchTriggers: options.refetchTriggers,
+//                refetchOnAppear: options.refetchOnAppear,
+//                structuralSharing: options.structuralSharing,
+//                meta: options.meta,
+//                enabled: options.enabled
+//            )
+//            observer.setOptions(newOptions)
+//        }
+//        .onChange(of: options.staleTime) { newStaleTime in
+//            // Update observer options when staleTime changes
+//            let newOptions = InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>(
+//                queryKey: options.queryKey,
+//                queryFn: options.queryFn,
+//                getNextPageParam: options.getNextPageParam,
+//                getPreviousPageParam: options.getPreviousPageParam,
+//                initialPageParam: options.initialPageParam,
+//                maxPages: options.maxPages,
+//                retryConfig: options.retryConfig,
+//                networkMode: options.networkMode,
+//                staleTime: newStaleTime,
+//                gcTime: options.gcTime,
+//                refetchTriggers: options.refetchTriggers,
+//                refetchOnAppear: options.refetchOnAppear,
+//                structuralSharing: options.structuralSharing,
+//                meta: options.meta,
+//                enabled: options.enabled
+//            )
+//            observer.setOptions(newOptions)
+//        }
     }
 }
 

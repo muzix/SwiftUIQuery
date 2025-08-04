@@ -52,7 +52,7 @@ public struct InfiniteQueryFetchMeta: Sendable {
 public struct InfiniteQueryConfig<
     TData: Sendable,
     TKey: QueryKey,
-    TPageParam: Sendable & Codable
+    TPageParam: Sendable & Codable & Equatable
 > {
     public let queryKey: TKey
     public let queryHash: String
@@ -84,7 +84,7 @@ public struct InfiniteQueryConfig<
 public final class InfiniteQuery<
     TData: Sendable,
     TKey: QueryKey,
-    TPageParam: Sendable & Codable
+    TPageParam: Sendable & Codable & Equatable
 >: AnyQuery, AnyInfiniteQuery {
     // MARK: - Public Properties
 

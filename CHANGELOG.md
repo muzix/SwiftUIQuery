@@ -67,6 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Multi-platform support (iOS, macOS, tvOS, watchOS)
   - Complete Pokemon API demo application
 
-[Unreleased]: https://github.com/muzix/swiftui-query/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/muzix/swiftui-query/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/muzix/swiftui-query/releases/tag/v0.1.0
+[Unreleased]: https://github.com/muzix/SwiftUIQuery/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/muzix/SwiftUIQuery/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/muzix/SwiftUIQuery/releases/tag/v0.1.0

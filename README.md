@@ -26,13 +26,13 @@ Add SwiftUI Query to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/muzix/swiftui-query.git", from: "0.2.0")
+    .package(url: "https://github.com/muzix/SwiftUIQuery.git", from: "0.2.0")
 ]
 ```
 
 Or add it through Xcode:
 1. File → Add Package Dependencies
-2. Enter the repository URL: `https://github.com/muzix/swiftui-query.git`
+2. Enter the repository URL: `https://github.com/muzix/SwiftUIQuery.git`
 3. Select the version
 
 ## Quick Start

@@ -122,19 +122,19 @@ struct FoundationalTypesTests {
 
     @Test("QueryState default initialization")
     func queryStateDefaults() {
-        let state = QueryState<String, SimpleTestError>.defaultState()
+        let state = QueryState<String>.defaultState()
 
         #expect(state.data == nil)
         #expect(state.dataUpdateCount == 0)
         #expect(state.error == nil)
-        #expect(state.status == .pending)
-        #expect(state.fetchStatus == .idle)
+        #expect(state.status == QueryStatus.pending)
+        #expect(state.fetchStatus == FetchStatus.idle)
         #expect(!state.isInvalidated)
     }
 
     @Test("QueryState with initial data")
     func queryStateWithData() {
-        let state = QueryState<String, SimpleTestError>(data: "test data")
+        let state = QueryState<String>(data: "test data")
 
         #expect(state.data == "test data")
         #expect(state.status == .success)
@@ -144,7 +144,7 @@ struct FoundationalTypesTests {
 
     @Test("QueryState data updates")
     func queryStateDataUpdates() {
-        let initialState = QueryState<String, SimpleTestError>.defaultState()
+        let initialState = QueryState<String>.defaultState()
         let updatedState = initialState.withData("new data")
 
         #expect(updatedState.data == "new data")
@@ -156,18 +156,18 @@ struct FoundationalTypesTests {
 
     @Test("QueryState error updates")
     func queryStateErrorUpdates() {
-        let initialState = QueryState<String, SimpleTestError>.defaultState()
-        let errorState = initialState.withError(.network)
+        let initialState = QueryState<String>.defaultState()
+        let errorState = initialState.withError(QueryError.networkError(URLError(.notConnectedToInternet)))
 
-        #expect(errorState.error == .network)
-        #expect(errorState.status == .error)
+        #expect(errorState.error == QueryError.networkError(URLError(.notConnectedToInternet)))
+        #expect(errorState.status == QueryStatus.error)
         #expect(errorState.errorUpdateCount == 1)
         #expect(errorState.fetchFailureCount == 1)
     }
 
     @Test("QueryState invalidation")
     func queryStateInvalidation() {
-        let state = QueryState<String, SimpleTestError>(data: "test")
+        let state = QueryState<String>(data: "test")
         let invalidatedState = state.invalidated()
 
         #expect(invalidatedState.isInvalidated)
@@ -247,7 +247,7 @@ struct FoundationalTypesTests {
 
     @Test("QueryError with underlying error")
     func queryErrorWithUnderlying() {
-        let underlying = SimpleTestError.network
+        let underlying = QueryError.networkError(URLError(.notConnectedToInternet))
         let error = QueryError(message: "Network failed", underlyingError: underlying)
 
         #expect(error.message == "Network failed")
@@ -345,11 +345,11 @@ struct FoundationalTypesTests {
 
         do {
             try await mutex.withLock {
-                throw SimpleTestError.network
+                throw QueryError.networkError(URLError(.notConnectedToInternet))
             }
             #expect(Bool(false), "Should have thrown an error")
         } catch {
-            #expect(error as? SimpleTestError == .network)
+            #expect(error is QueryError)
         }
 
         // Mutex should be unlocked even after error

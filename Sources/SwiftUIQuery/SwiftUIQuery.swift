@@ -91,10 +91,42 @@ public struct RetryConfig: Sendable, Codable {
     public let retryAttempts: RetryAttempts
     /// Delay between retries
     public let retryDelay: RetryDelay
+    /// Custom retry function (not Codable, handled separately)
+    public let customRetryFunction: ShouldRetryFunction?
+    /// Custom delay function (not Codable, handled separately)
+    public let customDelayFunction: RetryDelayFunction?
 
-    public init(retryAttempts: RetryAttempts = .count(3), retryDelay: RetryDelay = .exponentialBackoff) {
+    public init(
+        retryAttempts: RetryAttempts = .count(3),
+        retryDelay: RetryDelay = .exponentialBackoff,
+        customRetryFunction: ShouldRetryFunction? = nil,
+        customDelayFunction: RetryDelayFunction? = nil
+    ) {
         self.retryAttempts = retryAttempts
         self.retryDelay = retryDelay
+        self.customRetryFunction = customRetryFunction
+        self.customDelayFunction = customDelayFunction
+    }
+
+    // MARK: - Codable Conformance
+
+    enum CodingKeys: String, CodingKey {
+        case retryAttempts, retryDelay
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.retryAttempts = try container.decode(RetryAttempts.self, forKey: .retryAttempts)
+        self.retryDelay = try container.decode(RetryDelay.self, forKey: .retryDelay)
+        self.customRetryFunction = nil
+        self.customDelayFunction = nil
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(retryAttempts, forKey: .retryAttempts)
+        try container.encode(retryDelay, forKey: .retryDelay)
+        // Note: Custom functions are not encoded
     }
 
     public enum RetryAttempts: Sendable, Codable {
@@ -110,20 +142,65 @@ public struct RetryConfig: Sendable, Codable {
         // Note: Custom functions cannot be Codable, handled separately
     }
 
-    /// Get the actual retry count for this attempt
+    /// Determine if query should be retried based on failure count and error type
     public func shouldRetry(failureCount: Int, error: Error) -> Bool {
-        switch retryAttempts {
-        case .never:
-            return false
-        case let .count(max):
-            return failureCount < max
-        case .infinite:
-            return true
+        // If custom retry function is provided, use it exclusively
+        if let customRetryFunction {
+            return customRetryFunction(failureCount, error)
         }
+
+        // Default retry logic: check retry limits first
+        let withinRetryLimit: Bool = switch retryAttempts {
+        case .never:
+            false
+        case let .count(max):
+            failureCount < max
+        case .infinite:
+            true
+        }
+
+        // Only retry if we're within limits AND the error is retryable
+        guard withinRetryLimit else { return false }
+
+        // Check if the error type should be retried
+        if let queryError = error as? QueryError {
+            return queryError.isRetryable
+        }
+
+        // For non-QueryError types, apply basic heuristics
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            // Network connectivity issues are retryable
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost, .timedOut:
+                return true
+            // DNS and server issues are retryable
+            case .cannotFindHost, .serverCertificateUntrusted:
+                return true
+            // Client errors are generally not retryable
+            case .badURL, .unsupportedURL, .cancelled:
+                return false
+            default:
+                return true // Unknown URLError codes are retryable
+            }
+        }
+
+        // DecodingError is not retryable - indicates API change or bug
+        if error is DecodingError {
+            return false
+        }
+
+        // Unknown error types are retryable by default (conservative approach)
+        return true
     }
 
     /// Calculate delay for the given failure count
     public func delayForAttempt(failureCount: Int, error: Error) -> TimeInterval {
+        // If custom delay function is provided, use it exclusively
+        if let customDelayFunction {
+            return customDelayFunction(failureCount, error)
+        }
+
+        // Default delay logic
         switch retryDelay {
         case let .fixed(delay):
             return delay
@@ -131,6 +208,31 @@ public struct RetryConfig: Sendable, Codable {
             // Match TanStack Query's exponential backoff: Math.min(1000 * 2 ** failureCount, 30000)
             return min(1.0 * pow(2.0, Double(failureCount)), 30.0)
         }
+    }
+
+    // MARK: - Convenience Initializers
+
+    /// Never retry queries - fail immediately on any error
+    public static let never = Self(retryAttempts: .never)
+
+    /// Retry indefinitely with exponential backoff (use with caution)
+    public static let infinite = Self(retryAttempts: .infinite)
+
+    /// Custom retry function (TanStack Query style)
+    /// - Parameter retryFunction: Function that takes (failureCount, error) and returns Bool
+    public static func custom(_ retryFunction: @escaping ShouldRetryFunction) -> Self {
+        Self(customRetryFunction: retryFunction)
+    }
+
+    /// Custom retry with both retry logic and delay logic
+    /// - Parameters:
+    ///   - retryFunction: Function that determines if retry should happen
+    ///   - delayFunction: Function that determines retry delay
+    public static func custom(
+        retry retryFunction: @escaping ShouldRetryFunction,
+        delay delayFunction: @escaping RetryDelayFunction
+    ) -> Self {
+        Self(customRetryFunction: retryFunction, customDelayFunction: delayFunction)
     }
 }
 
@@ -232,7 +334,7 @@ public typealias InitialDataFunction<TData: Sendable> = @Sendable () -> TData?
 
 /// Configuration options for queries
 /// Equivalent to TanStack Query's QueryOptions
-public struct QueryOptions<TData: Sendable, TError: Error & Sendable & Codable, TKey: QueryKey>: Sendable {
+public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable {
     /// The query key that uniquely identifies this query
     public let queryKey: TKey
     /// The function that will be called to fetch data
@@ -453,7 +555,7 @@ public struct InfiniteData<TData: Sendable, TPageParam: Sendable & Codable>: Sen
 /// Complete state of a query instance
 /// Equivalent to TanStack Query's QueryState
 /// This is the single source of truth for query state - QueryObserverResult computes derived properties from this
-public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: Sendable {
+public struct QueryState<TData: Sendable>: Sendable {
     /// The actual data returned by the query function
     public let data: TData?
     /// Number of times data has been updated
@@ -461,7 +563,7 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     /// Timestamp when data was last updated (milliseconds since epoch)
     public let dataUpdatedAt: Int64
     /// The error object if the query failed
-    public let error: TError?
+    public let error: QueryError?
     /// Number of times an error has occurred
     public let errorUpdateCount: Int
     /// Timestamp when error was last updated (milliseconds since epoch)
@@ -469,7 +571,7 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     /// Number of consecutive failures
     public let fetchFailureCount: Int
     /// The failure reason of the last fetch attempt
-    public let fetchFailureReason: TError?
+    public let fetchFailureReason: QueryError?
     /// Arbitrary metadata from the query function
     public let fetchMeta: QueryMeta?
     /// Whether the query has been invalidated
@@ -483,11 +585,11 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
         data: TData? = nil,
         dataUpdateCount: Int = 0,
         dataUpdatedAt: Int64? = nil,
-        error: TError? = nil,
+        error: QueryError? = nil,
         errorUpdateCount: Int = 0,
         errorUpdatedAt: Int64 = 0,
         fetchFailureCount: Int = 0,
-        fetchFailureReason: TError? = nil,
+        fetchFailureReason: QueryError? = nil,
         fetchMeta: QueryMeta? = nil,
         isInvalidated: Bool = false,
         status: QueryStatus? = nil,
@@ -508,12 +610,12 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     }
 
     /// Create default empty state
-    public static func defaultState() -> QueryState<TData, TError> {
-        QueryState<TData, TError>()
+    public static func defaultState() -> QueryState<TData> {
+        QueryState<TData>()
     }
 
     /// Create a copy with updated data
-    public func withData(_ newData: TData?) -> QueryState<TData, TError> {
+    public func withData(_ newData: TData?) -> QueryState<TData> {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         return Self(
             data: newData,
@@ -532,7 +634,7 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     }
 
     /// Create a copy with updated error
-    public func withError(_ newError: TError?) -> QueryState<TData, TError> {
+    public func withError(_ newError: QueryError?) -> QueryState<TData> {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         return Self(
             data: data,
@@ -551,7 +653,7 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     }
 
     /// Create a copy with updated fetch status
-    public func withFetchStatus(_ newFetchStatus: FetchStatus) -> QueryState<TData, TError> {
+    public func withFetchStatus(_ newFetchStatus: FetchStatus) -> QueryState<TData> {
         Self(
             data: data,
             dataUpdateCount: dataUpdateCount,
@@ -569,7 +671,7 @@ public struct QueryState<TData: Sendable, TError: Error & Sendable & Codable>: S
     }
 
     /// Create a copy with invalidated flag set
-    public func invalidated() -> QueryState<TData, TError> {
+    public func invalidated() -> QueryState<TData> {
         Self(
             data: data,
             dataUpdateCount: dataUpdateCount,
@@ -629,6 +731,109 @@ public struct QueryError: Error, Sendable, Codable, Equatable {
         self.code = code
         self.underlyingError = underlyingError?.localizedDescription
     }
+
+    public var isNetworkError: Bool {
+        code == "NETWORK_ERROR"
+    }
+
+    /// Determines if this error type should be retried by default
+    /// Following common retry patterns used in production systems
+    public var isRetryable: Bool {
+        guard let code else { return true } // Unknown errors are retryable by default
+
+        switch code {
+        // Network-related errors are retryable
+        case "NETWORK_ERROR", "TIMEOUT":
+            return true
+
+        // Client errors (4xx) are generally not retryable
+        case "NOT_FOUND", "CLIENT_ERROR":
+            return false
+
+        // Specific client error codes that are not retryable
+        case let code where code.hasPrefix("HTTP_4"):
+            return false
+
+        // Server errors (5xx) are retryable as they might be temporary
+        case "SERVER_ERROR":
+            return true
+
+        // Specific server error codes - most are retryable except some
+        case let code where code.hasPrefix("HTTP_5"):
+            // 501 Not Implemented is permanent, don't retry
+            return code != "HTTP_501"
+
+        // Data parsing errors are not retryable (indicates bug or API change)
+        case "DECODING_ERROR":
+            return false
+
+        // Query was cancelled - not an error condition, don't retry
+        case "CANCELLED":
+            return false
+
+        // Configuration errors are not retryable
+        case "INVALID_CONFIGURATION":
+            return false
+
+        // Generic query failures are retryable (unknown cause)
+        case "QUERY_FAILED":
+            return true
+
+        default:
+            return true // Unknown error codes are retryable by default
+        }
+    }
+
+    // MARK: - Common Error Cases
+
+    /// Network-related error (connectivity issues)
+    public static func networkError(_ error: Error) -> Self {
+        Self(message: "Network error occurred", code: "NETWORK_ERROR", underlyingError: error)
+    }
+
+    /// Resource not found (HTTP 404)
+    public static func notFound(_ message: String = "Resource not found") -> Self {
+        Self(message: message, code: "NOT_FOUND")
+    }
+
+    /// HTTP error with status code
+    public static func httpError(statusCode: Int, message: String? = nil) -> Self {
+        let defaultMessage = "HTTP error \(statusCode)"
+        return Self(message: message ?? defaultMessage, code: "HTTP_\(statusCode)")
+    }
+
+    /// Server error (HTTP 5xx)
+    public static func serverError(statusCode: Int = 500, message: String? = nil) -> Self {
+        let defaultMessage = "Server error \(statusCode)"
+        return Self(message: message ?? defaultMessage, code: "SERVER_ERROR")
+    }
+
+    /// Client error (HTTP 4xx)
+    public static func clientError(statusCode: Int, message: String? = nil) -> Self {
+        let defaultMessage = "Client error \(statusCode)"
+        return Self(message: message ?? defaultMessage, code: "CLIENT_ERROR")
+    }
+
+    /// Data parsing/decoding error
+    public static func decodingError(_ error: Error) -> Self {
+        Self(message: "Failed to decode response", code: "DECODING_ERROR", underlyingError: error)
+    }
+
+    /// Query was cancelled
+    public static let cancelled = Self(message: "Query was cancelled", code: "CANCELLED")
+
+    /// Query timeout
+    public static let timeout = Self(message: "Query timed out", code: "TIMEOUT")
+
+    /// Invalid query configuration
+    public static func invalidConfiguration(_ message: String) -> Self {
+        Self(message: message, code: "INVALID_CONFIGURATION")
+    }
+
+    /// Generic query failure
+    public static func queryFailed(_ error: Error) -> Self {
+        Self(message: "Query failed", code: "QUERY_FAILED", underlyingError: error)
+    }
 }
 
 /// Observer identifier for tracking query observers
@@ -679,7 +884,7 @@ public actor Mutex {
     public func withLock<T: Sendable>(_ operation: @Sendable () async throws -> T) async rethrows -> T {
         await lock()
         defer {
-            Task { await self.unlock() }
+            Task { self.unlock() }
         }
         return try await operation()
     }
@@ -815,6 +1020,21 @@ public final class QueryCache {
     /// Get all query hashes currently in the cache
     public var queryHashes: Set<String> {
         Set(queries.keys)
+    }
+}
+
+// MARK: - QueryKey Extensions for Common Types
+
+extension String: QueryKey {
+    public var queryHash: String {
+        self
+    }
+}
+
+extension [String]: QueryKey {
+    public var queryHash: String {
+        // Create a deterministic hash by joining sorted components
+        sorted().joined(separator: "|")
     }
 }
 

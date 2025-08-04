@@ -92,9 +92,26 @@ swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilt
 - Use `swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilts` to verify compilation after implementation changes
 - **Use `swift test` to verify unit tests after implementation changes.**
 - **After each implementation changes, please update/write new unit tests to test existing/new code.**
-- Never run `xcodebuild` commands on .xcodeproj files
+- Never run `xcodebuild` commands on .xcodeproj files for automated testing
 - The Example/ directory contains Xcode projects for manual testing only
-- Only use swift test and swift build commands for automated verification
+
+## Demo Project Verification
+
+The Example/swiftui-query-demo/ directory contains a complete Pokemon API demo showing real-world SwiftUI Query usage.
+
+To verify the demo project:
+```bash
+# Use Swift Package Manager (recommended for automated testing)
+cd /path/to/swiftui-query
+swift test  # Verifies all core functionality works
+swift build -Xswiftc -strict-concurrency=complete --enable-experimental-prebuilts
+
+# For manual testing in Xcode simulator (optional)
+# Open Example/swiftui-query-demo.xcodeproj in Xcode and run manually
+# Note: xcodebuild commands may have simulator/device dependencies
+```
+
+**Important:** The main library verification should always use `swift test` and `swift build` commands. The Example Xcode project is for manual UI testing and demonstrating real-world usage patterns.
 
 ## Important TanStack Query Defaults to Implement
 

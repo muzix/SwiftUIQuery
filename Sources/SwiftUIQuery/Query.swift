@@ -8,36 +8,36 @@ import Perception
 
 /// Actions that can be performed on a query to modify its state
 /// Equivalent to TanStack Query's Action types
-public enum QueryAction<TData: Sendable, TError: Error & Sendable & Codable> {
+public enum QueryAction<TData: Sendable> {
     case fetch(meta: QueryMeta?)
     case success(data: TData?, dataUpdatedAt: Int64?, manual: Bool?)
-    case error(error: TError)
-    case failed(failureCount: Int, error: TError)
+    case error(error: QueryError)
+    case failed(failureCount: Int, error: QueryError)
     case pause
     case continueAction
     case invalidate
-    case setState(state: PartialQueryState<TData, TError>)
+    case setState(state: PartialQueryState<TData>)
 }
 
 /// Partial state for updating specific query state properties
-public struct PartialQueryState<TData: Sendable, TError: Error & Sendable & Codable> {
+public struct PartialQueryState<TData: Sendable> {
     public let data: TData?
-    public let error: TError?
+    public let error: QueryError?
     public let fetchStatus: FetchStatus?
     public let status: QueryStatus?
     public let isInvalidated: Bool?
     public let fetchFailureCount: Int?
-    public let fetchFailureReason: TError?
+    public let fetchFailureReason: QueryError?
     public let fetchMeta: QueryMeta?
 
     public init(
         data: TData? = nil,
-        error: TError? = nil,
+        error: QueryError? = nil,
         fetchStatus: FetchStatus? = nil,
         status: QueryStatus? = nil,
         isInvalidated: Bool? = nil,
         fetchFailureCount: Int? = nil,
-        fetchFailureReason: TError? = nil,
+        fetchFailureReason: QueryError? = nil,
         fetchMeta: QueryMeta? = nil
     ) {
         self.data = data
@@ -55,19 +55,19 @@ public struct PartialQueryState<TData: Sendable, TError: Error & Sendable & Coda
 
 /// Configuration for creating a Query instance
 /// Equivalent to TanStack Query's QueryConfig
-public struct QueryConfig<TData: Sendable, TError: Error & Sendable & Codable, TKey: QueryKey> {
+public struct QueryConfig<TData: Sendable, TKey: QueryKey> {
     public let queryKey: TKey
     public let queryHash: String
-    public let options: QueryOptions<TData, TError, TKey>?
-    public let defaultOptions: QueryOptions<TData, TError, TKey>?
-    public let state: QueryState<TData, TError>?
+    public let options: QueryOptions<TData, TKey>?
+    public let defaultOptions: QueryOptions<TData, TKey>?
+    public let state: QueryState<TData>?
 
     public init(
         queryKey: TKey,
         queryHash: String,
-        options: QueryOptions<TData, TError, TKey>? = nil,
-        defaultOptions: QueryOptions<TData, TError, TKey>? = nil,
-        state: QueryState<TData, TError>? = nil
+        options: QueryOptions<TData, TKey>? = nil,
+        defaultOptions: QueryOptions<TData, TKey>? = nil,
+        state: QueryState<TData>? = nil
     ) {
         self.queryKey = queryKey
         self.queryHash = queryHash
@@ -83,8 +83,7 @@ public struct QueryConfig<TData: Sendable, TError: Error & Sendable & Codable, T
 /// Equivalent to TanStack Query's Query class
 /// Conforms to AnyQuery for type-erased storage in QueryCache
 @MainActor
-@Perceptible
-public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TKey: QueryKey>: AnyQuery {
+public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     // MARK: - Public Properties
 
     /// The unique key identifying this query
@@ -94,10 +93,10 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
     public let queryHash: String
 
     /// Current query options (merged with defaults)
-    public private(set) var options: QueryOptions<TData, TError, TKey>
+    public private(set) var options: QueryOptions<TData, TKey>
 
     /// Current state of the query
-    public private(set) var state: QueryState<TData, TError>
+    public private(set) var state: QueryState<TData>
 
     /// List of observers watching this query
     public private(set) var observers: [AnyQueryObserver] = []
@@ -105,38 +104,36 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
     // MARK: - Private Properties
 
     /// Initial state when query was created
-    private let initialState: QueryState<TData, TError>
+    private let initialState: QueryState<TData>
 
     /// State to revert to if current fetch is cancelled
-    private var revertState: QueryState<TData, TError>?
+    private var revertState: QueryState<TData>?
 
     /// Default options provided during initialization
-    private let defaultOptions: QueryOptions<TData, TError, TKey>?
+    private let defaultOptions: QueryOptions<TData, TKey>?
 
     /// Reference to the query cache that owns this query
     private weak var cache: QueryCache?
 
     /// Current fetch task (if any)
-    @PerceptionIgnored
-    private nonisolated(unsafe) var fetchTask: Task<TData, Error>?
+    @PerceptionIgnored private nonisolated(unsafe) var fetchTask: Task<TData, Error>?
 
     /// Garbage collection timer for inactive queries
-    @PerceptionIgnored
-    private nonisolated(unsafe) var gcTimer: Timer?
+    @PerceptionIgnored private nonisolated(unsafe) var gcTimer: Timer?
 
     /// Whether the query has been destroyed
     private var isDestroyed = false
 
     // MARK: - Initialization
 
-    public init(config: QueryConfig<TData, TError, TKey>, cache: QueryCache) {
+    public init(config: QueryConfig<TData, TKey>, cache: QueryCache) {
         self.queryKey = config.queryKey
         self.queryHash = config.queryHash
         self.defaultOptions = config.defaultOptions
         self.cache = cache
 
         // Initialize with default state
-        self.initialState = QueryState<TData, TError>.defaultState()
+        self.initialState = QueryState<TData>.defaultState()
         self.state = config.state ?? self.initialState
 
         // Set options (merging defaults)
@@ -174,15 +171,15 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
     // MARK: - Options Management
 
     /// Update query options and reconfigure
-    public func setOptions(_ newOptions: QueryOptions<TData, TError, TKey>?) {
+    public func setOptions(_ newOptions: QueryOptions<TData, TKey>?) {
         self.options = Self.mergeOptions(newOptions, defaultOptions)
         updateGarbageCollectionTime()
     }
 
     private static func mergeOptions(
-        _ options: QueryOptions<TData, TError, TKey>?,
-        _ defaultOptions: QueryOptions<TData, TError, TKey>?
-    ) -> QueryOptions<TData, TError, TKey> {
+        _ options: QueryOptions<TData, TKey>?,
+        _ defaultOptions: QueryOptions<TData, TKey>?
+    ) -> QueryOptions<TData, TKey> {
         // For now, return options or create a minimal default
         // In a full implementation, this would merge all option properties
         if let options {
@@ -198,13 +195,13 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
     // MARK: - State Management
 
     /// Dispatch an action to update query state
-    public func dispatch(_ action: QueryAction<TData, TError>) {
+    public func dispatch(_ action: QueryAction<TData>) {
         let newState = reducer(state: state, action: action)
         setState(newState)
     }
 
     /// Update the query state and notify observers
-    private func setState(_ newState: QueryState<TData, TError>) {
+    private func setState(_ newState: QueryState<TData>) {
         let oldState = state
         state = newState
 
@@ -217,9 +214,9 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
 
     /// State reducer that handles actions and returns new state
     private func reducer(
-        state: QueryState<TData, TError>,
-        action: QueryAction<TData, TError>
-    ) -> QueryState<TData, TError> {
+        state: QueryState<TData>,
+        action: QueryAction<TData>
+    ) -> QueryState<TData> {
         switch action {
         case let .fetch(meta):
             return state
@@ -292,10 +289,10 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
 
     /// Apply partial state update to current state
     private func applyPartialState(
-        current: QueryState<TData, TError>,
-        partial: PartialQueryState<TData, TError>
-    ) -> QueryState<TData, TError> {
-        return QueryState(
+        current: QueryState<TData>,
+        partial: PartialQueryState<TData>
+    ) -> QueryState<TData> {
+        QueryState(
             data: partial.data ?? current.data,
             dataUpdateCount: current.dataUpdateCount,
             dataUpdatedAt: current.dataUpdatedAt,
@@ -393,7 +390,7 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
 
     /// Check if query is currently active (has enabled observers)
     public func isActive() -> Bool {
-        return !observers.isEmpty && observers.contains { observer in
+        !observers.isEmpty && observers.contains { observer in
             observer.isEnabled()
         }
     }
@@ -436,7 +433,167 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
         }
     }
 
+    // MARK: - Fetch Implementation
+
+    /// Internal fetch implementation that executes the query function
+    public func internalFetch() async throws -> TData {
+        // Cancel any existing fetch
+        fetchTask?.cancel()
+
+        // Update state to fetching
+        dispatch(.fetch(meta: nil))
+
+        // Create new fetch task
+        let task = Task<TData, Error> { @MainActor in
+            do {
+                // Execute the query function
+                let data = try await options.queryFn(queryKey)
+
+                // Check if task was cancelled
+                if Task.isCancelled {
+                    throw QueryError.cancelled
+                }
+
+                // Update state with success
+                dispatch(.success(data: data, dataUpdatedAt: nil, manual: false))
+
+                // Clear the fetch task
+                self.fetchTask = nil
+
+                return data
+            } catch {
+                // Check if task was cancelled
+                if Task.isCancelled {
+                    throw QueryError.cancelled
+                }
+
+                // Convert error to QueryError with proper classification
+                let typedError: QueryError = if let queryError = error as? QueryError {
+                    queryError
+                } else {
+                    // Classify error based on its type
+                    classifyError(error)
+                }
+
+                // Update state with error
+                dispatch(.error(error: typedError))
+
+                // Handle retry logic
+                let retryCount = state.fetchFailureCount
+                if options.retryConfig.shouldRetry(failureCount: retryCount, error: typedError) {
+                    // Calculate retry delay
+                    let delay = options.retryConfig.delayForAttempt(failureCount: retryCount, error: typedError)
+
+                    // Wait for retry delay
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+
+                    // Check if cancelled during sleep
+                    if Task.isCancelled {
+                        throw QueryError.cancelled
+                    }
+
+                    // Update failure count and retry
+                    dispatch(.failed(failureCount: retryCount + 1, error: typedError))
+                    return try await internalFetch()
+                } else {
+                    // Max retries reached or should not retry
+                    self.fetchTask = nil
+                    throw typedError
+                }
+            }
+        }
+
+        // Store the task
+        fetchTask = task
+
+        // Wait for the task to complete
+        return try await task.value
+    }
+
     // MARK: - Private Helpers
+
+    /// Classify errors into appropriate QueryError types
+    private func classifyError(_ error: Error) -> QueryError {
+        // Handle URLError (network-related errors)
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost:
+                return QueryError.networkError(urlError)
+            case .timedOut:
+                return QueryError.timeout
+            case .cancelled:
+                return QueryError.cancelled
+            default:
+                return QueryError.networkError(urlError)
+            }
+        }
+
+        // Handle DecodingError (JSON parsing errors)
+        if error is DecodingError {
+            return QueryError.decodingError(error)
+        }
+
+        // Handle NSError with HTTP status codes
+        if let nsError = error as NSError?,
+           nsError.domain == NSURLErrorDomain || nsError.domain == "NSURLErrorDomain" {
+            return QueryError.networkError(error)
+        }
+
+        // Check if error has HTTP status code information
+        // This covers URLSession errors that include HTTP response info
+        if let httpError = extractHTTPError(from: error) {
+            return httpError
+        }
+
+        // Default: treat as generic query failure
+        return QueryError.queryFailed(error)
+    }
+
+    /// Extract HTTP error information from various error types
+    private func extractHTTPError(from error: Error) -> QueryError? {
+        // Check if error description contains HTTP status information
+        let errorDescription = error.localizedDescription.lowercased()
+
+        // Look for common HTTP status patterns
+        if errorDescription.contains("404") || errorDescription.contains("not found") {
+            return QueryError.notFound("Resource not found")
+        }
+
+        if errorDescription.contains("400") {
+            return QueryError.clientError(statusCode: 400, message: "Bad Request")
+        }
+
+        if errorDescription.contains("401") {
+            return QueryError.clientError(statusCode: 401, message: "Unauthorized")
+        }
+
+        if errorDescription.contains("403") {
+            return QueryError.clientError(statusCode: 403, message: "Forbidden")
+        }
+
+        if errorDescription.contains("500") {
+            return QueryError.serverError(statusCode: 500, message: "Internal Server Error")
+        }
+
+        if errorDescription.contains("502") {
+            return QueryError.serverError(statusCode: 502, message: "Bad Gateway")
+        }
+
+        if errorDescription.contains("503") {
+            return QueryError.serverError(statusCode: 503, message: "Service Unavailable")
+        }
+
+        // Check for general 4xx/5xx patterns
+        if errorDescription.contains("4"), errorDescription.contains("client") {
+            return QueryError.clientError(statusCode: 400, message: "Client Error")
+        }
+
+        if errorDescription.contains("5"), errorDescription.contains("server") {
+            return QueryError.serverError(statusCode: 500, message: "Server Error")
+        }
+
+        return nil
+    }
 
     /// Notify all observers of state changes
     private func notifyObservers() {
@@ -447,8 +604,8 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
 
     /// Handle state transitions and side effects
     private func handleStateTransition(
-        from oldState: QueryState<TData, TError>,
-        to newState: QueryState<TData, TError>
+        from oldState: QueryState<TData>,
+        to newState: QueryState<TData>
     ) {
         // Handle any necessary side effects based on state changes
         // This could include triggering cache notifications, etc.
@@ -502,7 +659,7 @@ public final class Query<TData: Sendable, TError: Error & Sendable & Codable, TK
 
 extension QueryState {
     /// Update state with new fetch meta
-    func withFetchMeta(_ meta: QueryMeta?) -> QueryState<TData, TError> {
+    func withFetchMeta(_ meta: QueryMeta?) -> QueryState<TData> {
         QueryState(
             data: data,
             dataUpdateCount: dataUpdateCount,

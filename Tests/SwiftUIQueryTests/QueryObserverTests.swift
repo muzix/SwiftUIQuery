@@ -11,7 +11,7 @@ struct QueryObserverTests {
     func initializesCorrectly() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") }
         )
@@ -32,7 +32,7 @@ struct QueryObserverTests {
     func conveniencePropertiesReflectResult() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") }
         )
@@ -58,7 +58,7 @@ struct QueryObserverTests {
     func anyQueryObserverProtocolMethods() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") },
             enabled: true
@@ -77,7 +77,7 @@ struct QueryObserverTests {
     func disabledState() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") },
             enabled: false
@@ -94,7 +94,7 @@ struct QueryObserverTests {
     func subscribeUnsubscribeLifecycle() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") }
         )
@@ -121,7 +121,7 @@ struct QueryObserverTests {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
 
-        let initialOptions = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let initialOptions = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") },
             enabled: true
@@ -130,7 +130,7 @@ struct QueryObserverTests {
         let observer = QueryObserver(client: client, options: initialOptions)
         #expect(observer.isEnabled() == true)
 
-        let disabledOptions = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let disabledOptions = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Updated", email: "updated@example.com") },
             enabled: false
@@ -146,7 +146,7 @@ struct QueryObserverTests {
     func refetchReturnsTask() {
         let client = QueryClient()
         let queryKey = TestQueryKey.user(id: "test-user")
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in TestUser(id: "test-user", name: "Test", email: "test@example.com") }
         )
@@ -168,7 +168,7 @@ struct QueryObserverTests {
         let queryKey = TestQueryKey.user(id: "integration-test")
         let testUser = TestUser(id: "integration-test", name: "Integration", email: "integration@example.com")
 
-        let options = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let options = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in testUser },
             staleTime: 1.0,
@@ -187,7 +187,7 @@ struct QueryObserverTests {
         observer.subscribe()
 
         // 3. Update options
-        let disabledOptions = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let disabledOptions = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in testUser },
             enabled: false
@@ -196,7 +196,7 @@ struct QueryObserverTests {
         #expect(observer.isEnabled() == false)
 
         // 4. Re-enable
-        let enabledOptions = QueryOptions<TestUser, QueryError, TestQueryKey>(
+        let enabledOptions = QueryOptions<TestUser, TestQueryKey>(
             queryKey: queryKey,
             queryFn: { _ in testUser },
             enabled: true

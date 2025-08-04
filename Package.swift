@@ -18,7 +18,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-perception", from: "1.0.0"),
-        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.9.0"),
     ],
     targets: [
         .target(
@@ -34,7 +33,6 @@ let package = Package(
             name: "SwiftUIQueryTests",
             dependencies: [
                 "SwiftUIQuery",
-                .product(name: "ViewInspector", package: "ViewInspector")
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")

@@ -79,7 +79,6 @@ public struct DefaultMutationConfig {
 /// Equivalent to TanStack Query's QueryClient
 /// This is the main entry point for query operations
 @MainActor
-@Perceptible
 public final class QueryClient {
     // MARK: - Private Properties
 
@@ -152,7 +151,7 @@ public final class QueryClient {
         queryKey: TKey
     ) -> TData? {
         let queryHash = hashQueryKey(queryKey)
-        guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, QueryError, TKey> else {
+        guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> else {
             return nil
         }
         return query.state.data
@@ -172,9 +171,9 @@ public final class QueryClient {
     /// Get the current state of a query
     public func getQueryState<TData: Sendable, TKey: QueryKey>(
         queryKey: TKey
-    ) -> QueryState<TData, QueryError>? {
+    ) -> QueryState<TData>? {
         let queryHash = hashQueryKey(queryKey)
-        guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, QueryError, TKey> else {
+        guard let query = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> else {
             return nil
         }
         return query.state
@@ -183,26 +182,26 @@ public final class QueryClient {
     /// Build or get existing query from cache
     /// This is used internally by observers to get query instances
     public func buildQuery<TData: Sendable, TKey: QueryKey>(
-        options: QueryOptions<TData, QueryError, TKey>
-    ) -> Query<TData, QueryError, TKey> {
+        options: QueryOptions<TData, TKey>
+    ) -> Query<TData, TKey> {
         let queryHash = hashQueryKey(options.queryKey)
 
-        if let existingQuery = queryCache.get(queryHash: queryHash) as? Query<TData, QueryError, TKey> {
+        if let existingQuery = queryCache.get(queryHash: queryHash) as? Query<TData, TKey> {
             // Update options on existing query
             existingQuery.setOptions(options)
             return existingQuery
         }
 
         // Create new query
-        let config = QueryConfig<TData, QueryError, TKey>(
+        let config = QueryConfig<TData, TKey>(
             queryKey: options.queryKey,
             queryHash: queryHash,
             options: options,
             defaultOptions: mergeWithDefaults(options),
-            state: nil
+            state: nil as QueryState<TData>?
         )
 
-        let query = Query<TData, QueryError, TKey>(config: config, cache: queryCache)
+        let query = Query<TData, TKey>(config: config, cache: queryCache)
         queryCache.add(query)
 
         return query
@@ -212,8 +211,8 @@ public final class QueryClient {
     private func ensureQuery<TData: Sendable, TKey: QueryKey>(
         queryKey: TKey,
         data: TData
-    ) -> Query<TData, QueryError, TKey> {
-        let options = QueryOptions<TData, QueryError, TKey>(
+    ) -> Query<TData, TKey> {
+        let options = QueryOptions<TData, TKey>(
             queryKey: queryKey,
             queryFn: { _ in data }, // Dummy function for imperative data setting
             retryConfig: defaultOptions.queries?.retryConfig ?? RetryConfig(),
@@ -415,8 +414,8 @@ public final class QueryClient {
 
     /// Merge query options with defaults
     private func mergeWithDefaults<TData: Sendable, TKey: QueryKey>(
-        _ options: QueryOptions<TData, QueryError, TKey>
-    ) -> QueryOptions<TData, QueryError, TKey> {
+        _ options: QueryOptions<TData, TKey>
+    ) -> QueryOptions<TData, TKey> {
         guard let defaults = defaultOptions.queries else { return options }
 
         return QueryOptions(
@@ -438,7 +437,7 @@ public final class QueryClient {
 
     /// Create a consistent hash for a query key
     private func hashQueryKey(_ key: some QueryKey) -> String {
-        return key.queryHash
+        key.queryHash
     }
 }
 
@@ -472,10 +471,7 @@ protocol QueryCancellable {
 // MARK: - Query Protocol Conformance
 
 extension Query: QueryInvalidatable, QueryRefetchable, QueryResettable, QueryCancellable {
-    func fetch() async throws {
-        // TODO: Implement actual fetch logic in Query class
-        // For now, this is a placeholder
-    }
+    // The fetch() method is implemented in QueryObserver.swift
 }
 
 // MARK: - Singleton Provider
@@ -483,7 +479,6 @@ extension Query: QueryInvalidatable, QueryRefetchable, QueryResettable, QueryCan
 /// Global query client provider for easy access
 /// This provides a shared instance but allows custom clients via environment
 @MainActor
-@Perceptible
 public final class QueryClientProvider {
     /// Shared instance for global access
     public static let shared = QueryClientProvider()

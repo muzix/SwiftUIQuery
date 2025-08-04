@@ -11,11 +11,10 @@ import Perception
 /// This is now a computed view of QueryState rather than a separate data structure
 public struct QueryObserverResult<TData: Sendable> {
     /// The underlying query state
-    private let queryState: QueryState<TData, QueryError>
+    private let queryState: QueryState<TData>
     /// Whether the query is stale (computed from observer context)
     private let _isStale: Bool
-
-    init(queryState: QueryState<TData, QueryError>, isStale: Bool) {
+    init(queryState: QueryState<TData>, isStale: Bool) {
         self.queryState = queryState
         self._isStale = isStale
     }
@@ -93,12 +92,10 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     public let id = QueryObserverIdentifier()
 
     /// Current result containing all query state
-    @PerceptionIgnored
     public private(set) var result: QueryObserverResult<TData>
 
     /// Current query options
-    @PerceptionIgnored
-    public private(set) var options: QueryOptions<TData, QueryError, TKey>
+    @PerceptionIgnored public private(set) var options: QueryOptions<TData, TKey>
 
     // MARK: - Convenience Properties (derived from result)
 
@@ -135,30 +132,28 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     // MARK: - Private Properties
 
     /// Reference to the query client
-    private let client: QueryClient
+    public let client: QueryClient
 
     /// Current query instance
-    private var currentQuery: Query<TData, QueryError, TKey>?
+    private var currentQuery: Query<TData, TKey>?
 
     /// Whether the observer is currently subscribed
-    private var isSubscribed = false
+    public private(set) var isSubscribed = false
 
     /// Timer for stale timeout
-    @PerceptionIgnored
-    private nonisolated(unsafe) var staleTimer: Timer?
+    @PerceptionIgnored private nonisolated(unsafe) var staleTimer: Timer?
 
     /// Timer for refetch interval
-    @PerceptionIgnored
-    private nonisolated(unsafe) var refetchTimer: Timer?
+    @PerceptionIgnored private nonisolated(unsafe) var refetchTimer: Timer?
 
     // MARK: - Initialization
 
-    public init(client: QueryClient, options: QueryOptions<TData, QueryError, TKey>) {
+    public init(client: QueryClient, options: QueryOptions<TData, TKey>) {
         self.client = client
         self.options = options
         // Initialize with empty state
         self.result = QueryObserverResult<TData>(
-            queryState: QueryState<TData, QueryError>.defaultState(),
+            queryState: QueryState<TData>.defaultState(),
             isStale: true
         )
 
@@ -176,7 +171,7 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
 
     /// Set new options for the observer
     /// This will update the underlying query and potentially trigger refetch
-    public func setOptions(_ newOptions: QueryOptions<TData, QueryError, TKey>) {
+    public func setOptions(_ newOptions: QueryOptions<TData, TKey>) {
         let previousOptions = options
         let previousQuery = currentQuery
 
@@ -209,7 +204,7 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     /// Manually refetch the query
     @discardableResult
     public func refetch(cancelRefetch: Bool = true) -> Task<TData?, Error> {
-        return executeFetch(cancelRefetch: cancelRefetch)
+        executeFetch(cancelRefetch: cancelRefetch)
     }
 
     /// Subscribe to query updates
@@ -255,7 +250,7 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     // MARK: - AnyQueryObserver Protocol
 
     public func getCurrentResult() -> AnyQueryResult {
-        return AnyQueryResultWrapper(isStale: result.isStale)
+        AnyQueryResultWrapper(isStale: result.isStale)
     }
 
     public func onQueryUpdate() {
@@ -263,7 +258,7 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     }
 
     public func isEnabled() -> Bool {
-        return options.enabled
+        options.enabled
     }
 
     public func shouldFetchOnWindowFocus() -> Bool {
@@ -306,7 +301,7 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     private func updateResult() {
         guard let query = currentQuery else {
             result = QueryObserverResult<TData>(
-                queryState: QueryState<TData, QueryError>.defaultState(),
+                queryState: QueryState<TData>.defaultState(),
                 isStale: true
             )
             return
@@ -325,16 +320,21 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     /// Execute a fetch operation
     @discardableResult
     private func executeFetch(cancelRefetch: Bool = false) -> Task<TData?, Error> {
-        return Task { @MainActor in
+        Task<TData?, Error> { @MainActor () -> TData? in
             guard let query = currentQuery else { return nil }
 
             // Update result to show fetching state
             updateResult()
 
             do {
-                // TODO: Implement actual fetch in Query class
-                // For now, we'll use a placeholder
-                return try await query.fetch()
+                // Execute the query fetch operation
+                try await query.fetch()
+
+                // Update result to reflect new state
+                updateResult()
+
+                // Return the current data from the updated state
+                return query.state.data
             } catch {
                 // Update result to show error state
                 updateResult()
@@ -369,10 +369,10 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
 
     /// Determine if we should fetch when options change
     private func shouldFetchOnOptionsChange(
-        previousQuery: Query<TData, QueryError, TKey>?,
-        previousOptions: QueryOptions<TData, QueryError, TKey>,
-        newQuery: Query<TData, QueryError, TKey>?,
-        newOptions: QueryOptions<TData, QueryError, TKey>
+        previousQuery: Query<TData, TKey>?,
+        previousOptions: QueryOptions<TData, TKey>,
+        newQuery: Query<TData, TKey>?,
+        newOptions: QueryOptions<TData, TKey>
     ) -> Bool {
         // If query key changed, always fetch
         if previousQuery !== newQuery {
@@ -392,8 +392,8 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
 
     /// Helper to determine if should fetch based on a trigger condition
     private func shouldFetchOn(
-        query: Query<TData, QueryError, TKey>,
-        options: QueryOptions<TData, QueryError, TKey>,
+        query: Query<TData, TKey>,
+        options: QueryOptions<TData, TKey>,
         trigger: Bool
     ) -> Bool {
         guard options.enabled else { return false }
@@ -417,7 +417,11 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
             }
         }
 
-        // Set up refetch interval - TODO: Implement refetch interval logic
+        // Set up refetch interval
+        // NOTE: refetchInterval is not yet implemented in SwiftUIQuery
+        // This would require adding refetchInterval and refetchIntervalInBackground
+        // options to QueryOptions, similar to TanStack Query
+        // Implementation would use Timer.scheduledTimer with repeats: true
     }
 
     /// Clear all timers
@@ -440,10 +444,8 @@ private struct AnyQueryResultWrapper: AnyQueryResult {
 // MARK: - Query Extension for Fetch
 
 extension Query {
-    /// Fetch method to be implemented
-    func fetch() async throws -> TData? {
-        // TODO: Implementation will be added when we implement the full fetch logic
-        // For now, return current data
-        return state.data
+    /// Fetch method that delegates to the internal implementation
+    func fetch() async throws {
+        _ = try await internalFetch()
     }
 }

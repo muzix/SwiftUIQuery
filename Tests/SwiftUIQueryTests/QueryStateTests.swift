@@ -9,7 +9,7 @@ struct QueryStateTests {
 
     @Test("QueryState default initialization")
     func defaultInitialization() {
-        let state = QueryState<String, TestError>.defaultState()
+        let state = QueryState<String>.defaultState()
 
         #expect(state.data == nil)
         #expect(state.dataUpdateCount == 0)
@@ -21,13 +21,13 @@ struct QueryStateTests {
         #expect(state.fetchFailureReason == nil)
         #expect(state.fetchMeta == nil)
         #expect(state.isInvalidated == false)
-        #expect(state.status == .pending)
-        #expect(state.fetchStatus == .idle)
+        #expect(state.status == QueryStatus.pending)
+        #expect(state.fetchStatus == FetchStatus.idle)
     }
 
     @Test("QueryState initialization with data")
     func initializationWithData() {
-        let state = QueryState<String, TestError>(data: "test data")
+        let state = QueryState<String>(data: "test data")
 
         #expect(state.data == "test data")
         #expect(state.status == .success)
@@ -37,27 +37,27 @@ struct QueryStateTests {
 
     @Test("QueryState initialization with error")
     func initializationWithError() {
-        let error = TestError.network
-        let state = QueryState<String, TestError>(
+        let error = QueryError.networkError(URLError(.notConnectedToInternet))
+        let state = QueryState<String>(
             error: error,
             errorUpdateCount: 1,
             fetchFailureCount: 1,
             fetchFailureReason: error,
-            status: .error
+            status: QueryStatus.error
         )
 
-        #expect(state.error == .network)
-        #expect(state.status == .error)
+        #expect(state.error == QueryError.networkError(URLError(.notConnectedToInternet)))
+        #expect(state.status == QueryStatus.error)
         #expect(state.errorUpdateCount == 1)
         #expect(state.fetchFailureCount == 1)
-        #expect(state.fetchFailureReason == .network)
+        #expect(state.fetchFailureReason == QueryError.networkError(URLError(.notConnectedToInternet)))
     }
 
     // MARK: - Data Update Tests
 
     @Test("QueryState withData updates data correctly")
     func withDataUpdatesData() {
-        let initialState = QueryState<String, TestError>.defaultState()
+        let initialState = QueryState<String>.defaultState()
         let updatedState = initialState.withData("new data")
 
         #expect(updatedState.data == "new data")
@@ -71,12 +71,12 @@ struct QueryStateTests {
 
     @Test("QueryState withData clears previous errors")
     func withDataClearsPreviousErrors() {
-        let errorState = QueryState<String, TestError>(
-            error: .network,
+        let errorState = QueryState<String>(
+            error: QueryError.networkError(URLError(.notConnectedToInternet)),
             errorUpdateCount: 1,
             fetchFailureCount: 2,
-            fetchFailureReason: .network,
-            status: .error
+            fetchFailureReason: QueryError.networkError(URLError(.notConnectedToInternet)),
+            status: QueryStatus.error
         )
 
         let successState = errorState.withData("success data")
@@ -91,7 +91,7 @@ struct QueryStateTests {
 
     @Test("QueryState withData with nil data")
     func withDataNilData() {
-        let state = QueryState<String, TestError>(data: "existing data")
+        let state = QueryState<String>(data: "existing data")
         let updatedState = state.withData(nil)
 
         #expect(updatedState.data == nil)
@@ -103,20 +103,20 @@ struct QueryStateTests {
 
     @Test("QueryState withError updates error correctly")
     func withErrorUpdatesError() {
-        let initialState = QueryState<String, TestError>.defaultState()
-        let errorState = initialState.withError(.network)
+        let initialState = QueryState<String>.defaultState()
+        let errorState = initialState.withError(QueryError.networkError(URLError(.notConnectedToInternet)))
 
-        #expect(errorState.error == .network)
-        #expect(errorState.status == .error)
+        #expect(errorState.error == QueryError.networkError(URLError(.notConnectedToInternet)))
+        #expect(errorState.status == QueryStatus.error)
         #expect(errorState.errorUpdateCount == 1)
         #expect(errorState.errorUpdatedAt > initialState.errorUpdatedAt)
         #expect(errorState.fetchFailureCount == 1)
-        #expect(errorState.fetchFailureReason == .network)
+        #expect(errorState.fetchFailureReason == QueryError.networkError(URLError(.notConnectedToInternet)))
     }
 
     @Test("QueryState withError increments counts")
     func withErrorIncrementsCountsCorrectly() {
-        let state = QueryState<String, TestError>(
+        let state = QueryState<String>(
             errorUpdateCount: 2,
             fetchFailureCount: 1
         )
@@ -130,11 +130,11 @@ struct QueryStateTests {
 
     @Test("QueryState withError with nil error")
     func withErrorNilError() {
-        let errorState = QueryState<String, TestError>(
-            error: .network,
+        let errorState = QueryState<String>(
+            error: QueryError.networkError(URLError(.notConnectedToInternet)),
             errorUpdateCount: 1,
             fetchFailureCount: 1,
-            status: .error
+            status: QueryStatus.error
         )
 
         let clearedState = errorState.withError(nil)
@@ -148,47 +148,47 @@ struct QueryStateTests {
 
     @Test("QueryState withFetchStatus updates correctly")
     func withFetchStatusUpdatesCorrectly() {
-        let state = QueryState<String, TestError>.defaultState()
+        let state = QueryState<String>.defaultState()
 
-        let fetchingState = state.withFetchStatus(.fetching)
-        #expect(fetchingState.fetchStatus == .fetching)
+        let fetchingState = state.withFetchStatus(FetchStatus.fetching)
+        #expect(fetchingState.fetchStatus == FetchStatus.fetching)
 
         let pausedState = fetchingState.withFetchStatus(.paused)
         #expect(pausedState.fetchStatus == .paused)
 
-        let idleState = pausedState.withFetchStatus(.idle)
-        #expect(idleState.fetchStatus == .idle)
+        let idleState = pausedState.withFetchStatus(FetchStatus.idle)
+        #expect(idleState.fetchStatus == FetchStatus.idle)
     }
 
     @Test("QueryState withFetchStatus preserves other properties")
     func withFetchStatusPreservesOtherProperties() {
-        let originalState = QueryState<String, TestError>(
+        let originalState = QueryState<String>(
             data: "test data",
             dataUpdateCount: 5,
-            error: .network,
+            error: QueryError.networkError(URLError(.notConnectedToInternet)),
             errorUpdateCount: 2,
             fetchFailureCount: 1,
             isInvalidated: true,
             status: .success
         )
 
-        let updatedState = originalState.withFetchStatus(.fetching)
+        let updatedState = originalState.withFetchStatus(FetchStatus.fetching)
 
         #expect(updatedState.data == "test data")
         #expect(updatedState.dataUpdateCount == 5)
-        #expect(updatedState.error == .network)
+        #expect(updatedState.error == QueryError.networkError(URLError(.notConnectedToInternet)))
         #expect(updatedState.errorUpdateCount == 2)
         #expect(updatedState.fetchFailureCount == 1)
         #expect(updatedState.isInvalidated == true)
         #expect(updatedState.status == .success)
-        #expect(updatedState.fetchStatus == .fetching) // Only this should change
+        #expect(updatedState.fetchStatus == FetchStatus.fetching) // Only this should change
     }
 
     // MARK: - Invalidation Tests
 
     @Test("QueryState invalidation sets flag correctly")
     func invalidationSetsFlagCorrectly() {
-        let state = QueryState<String, TestError>(data: "test data")
+        let state = QueryState<String>(data: "test data")
         let invalidatedState = state.invalidated()
 
         #expect(invalidatedState.isInvalidated == true)
@@ -198,17 +198,17 @@ struct QueryStateTests {
 
     @Test("QueryState invalidation preserves all other properties")
     func invalidationPreservesOtherProperties() {
-        let originalState = QueryState<String, TestError>(
+        let originalState = QueryState<String>(
             data: "test data",
             dataUpdateCount: 3,
             dataUpdatedAt: 12345,
-            error: .network,
+            error: QueryError.networkError(URLError(.notConnectedToInternet)),
             errorUpdateCount: 1,
             errorUpdatedAt: 54321,
             fetchFailureCount: 2,
             fetchFailureReason: .timeout,
             fetchMeta: ["key": AnyCodable("value")],
-            status: .error,
+            status: QueryStatus.error,
             fetchStatus: .paused
         )
 
@@ -217,13 +217,13 @@ struct QueryStateTests {
         #expect(invalidatedState.data == "test data")
         #expect(invalidatedState.dataUpdateCount == 3)
         #expect(invalidatedState.dataUpdatedAt == 12345)
-        #expect(invalidatedState.error == .network)
+        #expect(invalidatedState.error == QueryError.networkError(URLError(.notConnectedToInternet)))
         #expect(invalidatedState.errorUpdateCount == 1)
         #expect(invalidatedState.errorUpdatedAt == 54321)
         #expect(invalidatedState.fetchFailureCount == 2)
         #expect(invalidatedState.fetchFailureReason == .timeout)
         #expect(invalidatedState.fetchMeta != nil)
-        #expect(invalidatedState.status == .error)
+        #expect(invalidatedState.status == QueryStatus.error)
         #expect(invalidatedState.fetchStatus == .paused)
         #expect(invalidatedState.isInvalidated == true) // Only this should change
     }
@@ -233,7 +233,7 @@ struct QueryStateTests {
     @Test("QueryState computed properties work correctly")
     func computedPropertiesWorkCorrectly() {
         // Test with no data
-        let emptyState = QueryState<String, TestError>.defaultState()
+        let emptyState = QueryState<String>.defaultState()
         #expect(emptyState.hasData == false)
         #expect(emptyState.hasError == false)
         #expect(emptyState.isFetching == false)
@@ -241,17 +241,17 @@ struct QueryStateTests {
         #expect(emptyState.isIdle == true)
 
         // Test with data
-        let dataState = QueryState<String, TestError>(data: "test")
+        let dataState = QueryState<String>(data: "test")
         #expect(dataState.hasData == true)
         #expect(dataState.hasError == false)
 
         // Test with error
-        let errorState = QueryState<String, TestError>(error: .network)
+        let errorState = QueryState<String>(error: QueryError.networkError(URLError(.notConnectedToInternet)))
         #expect(errorState.hasData == false)
         #expect(errorState.hasError == true)
 
         // Test fetch statuses
-        let fetchingState = emptyState.withFetchStatus(.fetching)
+        let fetchingState = emptyState.withFetchStatus(FetchStatus.fetching)
         #expect(fetchingState.isFetching == true)
         #expect(fetchingState.isPaused == false)
         #expect(fetchingState.isIdle == false)
@@ -267,7 +267,7 @@ struct QueryStateTests {
         let timestamp: Int64 = 1_640_995_200_000 // Jan 1, 2022 00:00:00 UTC
         let expectedDate = Date(timeIntervalSince1970: 1_640_995_200.0)
 
-        let state = QueryState<String, TestError>(
+        let state = QueryState<String>(
             dataUpdatedAt: timestamp,
             errorUpdatedAt: timestamp
         )
@@ -276,7 +276,7 @@ struct QueryStateTests {
         #expect(state.errorUpdatedDate == expectedDate)
 
         // Test with zero timestamps
-        let zeroState = QueryState<String, TestError>(
+        let zeroState = QueryState<String>(
             dataUpdatedAt: 0,
             errorUpdatedAt: 0
         )
@@ -290,13 +290,13 @@ struct QueryStateTests {
     @Test("QueryState state transitions work correctly")
     func stateTransitionsWorkCorrectly() {
         // Start with default state
-        var state = QueryState<String, TestError>.defaultState()
-        #expect(state.status == .pending)
-        #expect(state.fetchStatus == .idle)
+        var state = QueryState<String>.defaultState()
+        #expect(state.status == QueryStatus.pending)
+        #expect(state.fetchStatus == FetchStatus.idle)
 
         // Start fetching
-        state = state.withFetchStatus(.fetching)
-        #expect(state.fetchStatus == .fetching)
+        state = state.withFetchStatus(FetchStatus.fetching)
+        #expect(state.fetchStatus == FetchStatus.fetching)
 
         // Successful fetch
         state = state.withData("success data")
@@ -304,8 +304,8 @@ struct QueryStateTests {
         #expect(state.data == "success data")
 
         // Stop fetching
-        state = state.withFetchStatus(.idle)
-        #expect(state.fetchStatus == .idle)
+        state = state.withFetchStatus(FetchStatus.idle)
+        #expect(state.fetchStatus == FetchStatus.idle)
 
         // Invalidate
         state = state.invalidated()
@@ -313,17 +313,17 @@ struct QueryStateTests {
         #expect(state.data == "success data") // Data should still be there
 
         // Start new fetch
-        state = state.withFetchStatus(.fetching)
+        state = state.withFetchStatus(FetchStatus.fetching)
 
         // Fetch fails
-        state = state.withError(.network)
-        #expect(state.status == .error)
-        #expect(state.error == .network)
+        state = state.withError(QueryError.networkError(URLError(.notConnectedToInternet)))
+        #expect(state.status == QueryStatus.error)
+        #expect(state.error == QueryError.networkError(URLError(.notConnectedToInternet)))
         #expect(state.fetchFailureCount == 1)
 
         // Stop fetching
-        state = state.withFetchStatus(.idle)
-        #expect(state.fetchStatus == .idle)
+        state = state.withFetchStatus(FetchStatus.idle)
+        #expect(state.fetchStatus == FetchStatus.idle)
     }
 }
 

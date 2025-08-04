@@ -9,7 +9,7 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult initializes with QueryState")
     func initializesWithQueryState() {
-        let queryState = QueryState<String, QueryError>(data: "test data")
+        let queryState = QueryState<String>(data: "test data")
         let result = QueryObserverResult(queryState: queryState, isStale: false)
 
         #expect(result.data == "test data")
@@ -18,7 +18,7 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult with empty state")
     func initializesWithEmptyState() {
-        let queryState = QueryState<String, QueryError>.defaultState()
+        let queryState = QueryState<String>.defaultState()
         let result = QueryObserverResult(queryState: queryState, isStale: true)
 
         #expect(result.data == nil)
@@ -35,7 +35,7 @@ struct QueryObserverResultTests {
         let dataTimestamp: Int64 = 1_640_995_200_000 // Jan 1, 2022
         let errorTimestamp: Int64 = 1_640_995_300_000 // Jan 1, 2022 + 100s
 
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: "test data",
             dataUpdateCount: 3,
             dataUpdatedAt: dataTimestamp,
@@ -65,7 +65,7 @@ struct QueryObserverResultTests {
         let expectedDataDate = Date(timeIntervalSince1970: 1_640_995_200.0)
         let expectedErrorDate = Date(timeIntervalSince1970: 1_640_995_300.0)
 
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             dataUpdatedAt: dataTimestamp,
             errorUpdatedAt: errorTimestamp
         )
@@ -78,7 +78,7 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult nil timestamps")
     func nilTimestamps() {
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             dataUpdatedAt: 0,
             errorUpdatedAt: 0
         )
@@ -94,21 +94,21 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult fetch status properties")
     func fetchStatusProperties() {
         // Test fetching
-        let fetchingState = QueryState<String, QueryError>(fetchStatus: .fetching)
+        let fetchingState = QueryState<String>(fetchStatus: FetchStatus.fetching)
         let fetchingResult = QueryObserverResult(queryState: fetchingState, isStale: false)
 
         #expect(fetchingResult.isFetching == true)
         #expect(fetchingResult.isPaused == false)
 
         // Test paused
-        let pausedState = QueryState<String, QueryError>(fetchStatus: .paused)
+        let pausedState = QueryState<String>(fetchStatus: .paused)
         let pausedResult = QueryObserverResult(queryState: pausedState, isStale: false)
 
         #expect(pausedResult.isFetching == false)
         #expect(pausedResult.isPaused == true)
 
         // Test idle
-        let idleState = QueryState<String, QueryError>(fetchStatus: .idle)
+        let idleState = QueryState<String>(fetchStatus: FetchStatus.idle)
         let idleResult = QueryObserverResult(queryState: idleState, isStale: false)
 
         #expect(idleResult.isFetching == false)
@@ -118,7 +118,7 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult query status properties")
     func queryStatusProperties() {
         // Test pending
-        let pendingState = QueryState<String, QueryError>(status: .pending)
+        let pendingState = QueryState<String>(status: QueryStatus.pending)
         let pendingResult = QueryObserverResult(queryState: pendingState, isStale: false)
 
         #expect(pendingResult.isPending == true)
@@ -126,7 +126,7 @@ struct QueryObserverResultTests {
         #expect(pendingResult.isError == false)
 
         // Test success
-        let successState = QueryState<String, QueryError>(
+        let successState = QueryState<String>(
             data: "data",
             status: .success
         )
@@ -137,9 +137,9 @@ struct QueryObserverResultTests {
         #expect(successResult.isError == false)
 
         // Test error
-        let errorState = QueryState<String, QueryError>(
+        let errorState = QueryState<String>(
             error: QueryError(message: "Error"),
-            status: .error
+            status: QueryStatus.error
         )
         let errorResult = QueryObserverResult(queryState: errorState, isStale: false)
 
@@ -151,9 +151,9 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult loading state computation")
     func loadingStateComputation() {
         // Loading = pending + fetching
-        let loadingState = QueryState<String, QueryError>(
-            status: .pending,
-            fetchStatus: .fetching
+        let loadingState = QueryState<String>(
+            status: QueryStatus.pending,
+            fetchStatus: FetchStatus.fetching
         )
         let loadingResult = QueryObserverResult(queryState: loadingState, isStale: false)
 
@@ -162,10 +162,10 @@ struct QueryObserverResultTests {
         #expect(loadingResult.isFetching == true)
 
         // Not loading if not pending
-        let notLoadingState1 = QueryState<String, QueryError>(
+        let notLoadingState1 = QueryState<String>(
             data: "data",
             status: .success,
-            fetchStatus: .fetching
+            fetchStatus: FetchStatus.fetching
         )
         let notLoadingResult1 = QueryObserverResult(queryState: notLoadingState1, isStale: false)
 
@@ -174,9 +174,9 @@ struct QueryObserverResultTests {
         #expect(notLoadingResult1.isFetching == true)
 
         // Not loading if not fetching
-        let notLoadingState2 = QueryState<String, QueryError>(
-            status: .pending,
-            fetchStatus: .idle
+        let notLoadingState2 = QueryState<String>(
+            status: QueryStatus.pending,
+            fetchStatus: FetchStatus.idle
         )
         let notLoadingResult2 = QueryObserverResult(queryState: notLoadingState2, isStale: false)
 
@@ -188,10 +188,10 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult refetching state computation")
     func refetchingStateComputation() {
         // Refetching = fetching + not pending
-        let refetchingState = QueryState<String, QueryError>(
+        let refetchingState = QueryState<String>(
             data: "existing data",
             status: .success,
-            fetchStatus: .fetching
+            fetchStatus: FetchStatus.fetching
         )
         let refetchingResult = QueryObserverResult(queryState: refetchingState, isStale: false)
 
@@ -200,9 +200,9 @@ struct QueryObserverResultTests {
         #expect(refetchingResult.isFetching == true)
 
         // Not refetching if pending
-        let notRefetchingState1 = QueryState<String, QueryError>(
-            status: .pending,
-            fetchStatus: .fetching
+        let notRefetchingState1 = QueryState<String>(
+            status: QueryStatus.pending,
+            fetchStatus: FetchStatus.fetching
         )
         let notRefetchingResult1 = QueryObserverResult(queryState: notRefetchingState1, isStale: false)
 
@@ -211,10 +211,10 @@ struct QueryObserverResultTests {
         #expect(notRefetchingResult1.isFetching == true)
 
         // Not refetching if not fetching
-        let notRefetchingState2 = QueryState<String, QueryError>(
+        let notRefetchingState2 = QueryState<String>(
             data: "data",
             status: .success,
-            fetchStatus: .idle
+            fetchStatus: FetchStatus.idle
         )
         let notRefetchingResult2 = QueryObserverResult(queryState: notRefetchingState2, isStale: false)
 
@@ -225,7 +225,7 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult stale state from parameter")
     func staleStateFromParameter() {
-        let queryState = QueryState<String, QueryError>(data: "data")
+        let queryState = QueryState<String>(data: "data")
 
         let staleResult = QueryObserverResult(queryState: queryState, isStale: true)
         #expect(staleResult.isStale == true)
@@ -239,9 +239,9 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult initial loading scenario")
     func initialLoadingScenario() {
         // First load: pending + fetching
-        let queryState = QueryState<String, QueryError>(
-            status: .pending,
-            fetchStatus: .fetching
+        let queryState = QueryState<String>(
+            status: QueryStatus.pending,
+            fetchStatus: FetchStatus.fetching
         )
         let result = QueryObserverResult(queryState: queryState, isStale: true)
 
@@ -258,11 +258,11 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult successful load scenario")
     func successfulLoadScenario() {
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: "loaded data",
             dataUpdateCount: 1,
             status: .success,
-            fetchStatus: .idle
+            fetchStatus: FetchStatus.idle
         )
         let result = QueryObserverResult(queryState: queryState, isStale: false)
 
@@ -280,11 +280,11 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult background refetch scenario")
     func backgroundRefetchScenario() {
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: "cached data",
             dataUpdateCount: 1,
             status: .success,
-            fetchStatus: .fetching
+            fetchStatus: FetchStatus.fetching
         )
         let result = QueryObserverResult(queryState: queryState, isStale: true)
 
@@ -302,13 +302,13 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult error scenario")
     func errorScenario() {
         let error = QueryError(message: "Network error", code: "NETWORK_001")
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             error: error,
             errorUpdateCount: 1,
             fetchFailureCount: 1,
             fetchFailureReason: error,
-            status: .error,
-            fetchStatus: .idle
+            status: QueryStatus.error,
+            fetchStatus: FetchStatus.idle
         )
         let result = QueryObserverResult(queryState: queryState, isStale: true)
 
@@ -330,15 +330,15 @@ struct QueryObserverResultTests {
     func errorWithExistingDataScenario() {
         // Simulate a refetch that failed but we still have old data
         let error = QueryError(message: "Refetch failed")
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: "old data",
             dataUpdateCount: 1,
             error: error,
             errorUpdateCount: 1,
             fetchFailureCount: 1,
             fetchFailureReason: error,
-            status: .error,
-            fetchStatus: .idle
+            status: QueryStatus.error,
+            fetchStatus: FetchStatus.idle
         )
         let result = QueryObserverResult(queryState: queryState, isStale: true)
 
@@ -352,7 +352,7 @@ struct QueryObserverResultTests {
 
     @Test("QueryObserverResult paused scenario")
     func pausedScenario() {
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: "cached data",
             status: .success,
             fetchStatus: .paused
@@ -379,9 +379,9 @@ struct QueryObserverResultTests {
             underlyingError: NSError(domain: "TestDomain", code: 42)
         )
 
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             error: queryError,
-            status: .error
+            status: QueryStatus.error
         )
         let result = QueryObserverResult(queryState: queryState, isStale: false)
 
@@ -394,15 +394,79 @@ struct QueryObserverResultTests {
     @Test("QueryObserverResult state consistency")
     func stateConsistency() {
         // Test each scenario individually to avoid large tuple violation
-        testScenario(.pending, .idle, pending: true, success: false, error: false, loading: false, refetching: false)
-        testScenario(.pending, .fetching, pending: true, success: false, error: false, loading: true, refetching: false)
-        testScenario(.pending, .paused, pending: true, success: false, error: false, loading: false, refetching: false)
-        testScenario(.success, .idle, pending: false, success: true, error: false, loading: false, refetching: false)
-        testScenario(.success, .fetching, pending: false, success: true, error: false, loading: false, refetching: true)
+        testScenario(
+            QueryStatus.pending,
+            FetchStatus.idle,
+            pending: true,
+            success: false,
+            error: false,
+            loading: false,
+            refetching: false
+        )
+        testScenario(
+            QueryStatus.pending,
+            FetchStatus.fetching,
+            pending: true,
+            success: false,
+            error: false,
+            loading: true,
+            refetching: false
+        )
+        testScenario(
+            QueryStatus.pending,
+            .paused,
+            pending: true,
+            success: false,
+            error: false,
+            loading: false,
+            refetching: false
+        )
+        testScenario(
+            .success,
+            FetchStatus.idle,
+            pending: false,
+            success: true,
+            error: false,
+            loading: false,
+            refetching: false
+        )
+        testScenario(
+            .success,
+            FetchStatus.fetching,
+            pending: false,
+            success: true,
+            error: false,
+            loading: false,
+            refetching: true
+        )
         testScenario(.success, .paused, pending: false, success: true, error: false, loading: false, refetching: false)
-        testScenario(.error, .idle, pending: false, success: false, error: true, loading: false, refetching: false)
-        testScenario(.error, .fetching, pending: false, success: false, error: true, loading: false, refetching: true)
-        testScenario(.error, .paused, pending: false, success: false, error: true, loading: false, refetching: false)
+        testScenario(
+            QueryStatus.error,
+            FetchStatus.idle,
+            pending: false,
+            success: false,
+            error: true,
+            loading: false,
+            refetching: false
+        )
+        testScenario(
+            QueryStatus.error,
+            FetchStatus.fetching,
+            pending: false,
+            success: false,
+            error: true,
+            loading: false,
+            refetching: true
+        )
+        testScenario(
+            QueryStatus.error,
+            .paused,
+            pending: false,
+            success: false,
+            error: true,
+            loading: false,
+            refetching: false
+        )
     }
 
     private func testScenario(
@@ -414,9 +478,9 @@ struct QueryObserverResultTests {
         loading: Bool,
         refetching: Bool
     ) {
-        let queryState = QueryState<String, QueryError>(
+        let queryState = QueryState<String>(
             data: status == .success ? "data" : nil,
-            error: status == .error ? QueryError(message: "error") : nil,
+            error: status == QueryStatus.error ? QueryError(message: "error") : nil,
             status: status,
             fetchStatus: fetchStatus
         )

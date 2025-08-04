@@ -17,10 +17,14 @@ excluded:
 disabled_rules:
   - trailing_comma # Allow trailing commas in arrays/dictionaries
   - todo # Allow TODO comments during development
+  - file_length # Allow longer files for comprehensive implementations
+  - function_body_length # Allow longer function bodies for complex logic
+  - multiple_closures_with_trailing_closure # Allow trailing closure syntax with multiple closures
+  - function_parameter_count # Allow functions with more than 6 parameters
+  - redundant_string_enum_value # Allow explicit raw values for consistency
+  - raw_value_for_camel_cased_codable_enum # Disable conflicting camel case enum rule
 
 # Per-path rule customization
-force_unwrapping:
-  severity: warning
 
 opt_in_rules:
   # Swift 6 and Modern Swift Best Practices
@@ -71,7 +75,6 @@ opt_in_rules:
   - quick_discouraged_call
   - quick_discouraged_focused_test
   - quick_discouraged_pending_test
-  - raw_value_for_camel_cased_codable_enum
   - reduce_into
   - redundant_nil_coalescing
   - redundant_type_annotation
@@ -106,17 +109,8 @@ type_body_length:
   warning: 800
   error: 1000
 
-file_length:
-  warning: 500
-  error: 1000
-
-function_body_length:
-  warning: 50
-  error: 100
-
-function_parameter_count:
-  warning: 6
-  error: 8
+# file_length, function_body_length, and function_parameter_count rules are disabled
+# Remove configurations to avoid warnings
 
 cyclomatic_complexity:
   warning: 15

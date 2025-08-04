@@ -1,22 +1,22 @@
 # SwiftUI Query
 
-A Swift implementation of TanStack Query for SwiftUI applications, providing powerful asynchronous state management with caching, synchronization, and more.
+A Swift implementation of TanStack Query for SwiftUI applications, providing powerful asynchronous state management with caching, synchronization, and infinite queries.
 
 ## Features
 
-- 🚀 Swift 6 compatible with strict concurrency
-- 📦 Zero external dependencies
-- 🔄 Automatic refetching (on mount, focus, reconnect)
-- ⚡️ Request deduplication
-- 🗑️ Garbage collection
-- 📊 Parallel and dependent queries
-- 🔧 Built with Swift Observation framework
-- 📱 Support for iOS, macOS, tvOS, and watchOS
+- 🚀 **Swift 6 Compatible** - Full strict concurrency support
+- 🔄 **Automatic Refetching** - On mount, focus, reconnect
+- 📱 **iOS 16+ Support** - Built with Perception library for broad compatibility
+- ⚡️ **Request Deduplication** - Automatic request optimization
+- 🗑️ **Garbage Collection** - Smart memory management
+- 📊 **Infinite Queries** - Built-in pagination support
+- 🔧 **Type Safe** - Full Swift type safety
+- 📱 **Multi-Platform** - iOS, macOS, tvOS, and watchOS
 
 ## Requirements
 
 - Swift 6.0+
-- iOS 17.0+ / macOS 14.0+ / tvOS 17.0+ / watchOS 10.0+
+- iOS 16.0+ / macOS 13.0+ / tvOS 16.0+ / watchOS 9.0+
 
 ## Installation
 
@@ -26,14 +26,118 @@ Add SwiftUI Query to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/muzix/swiftui-query.git", from: "1.0.0")
+    .package(url: "https://github.com/muzix/swiftui-query.git", from: "0.2.0")
 ]
 ```
 
 Or add it through Xcode:
 1. File → Add Package Dependencies
-2. Enter the repository URL
+2. Enter the repository URL: `https://github.com/muzix/swiftui-query.git`
 3. Select the version
+
+## Quick Start
+
+### 1. Set up QueryClient
+
+```swift
+import SwiftUI
+import SwiftUIQuery
+
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .queryClient() // Add QueryClient to environment
+        }
+    }
+}
+```
+
+### 2. Basic Query
+
+```swift
+import SwiftUI
+import SwiftUIQuery
+
+struct ContentView: View {
+    var body: some View {
+        UseQuery(
+            queryKey: "todos",
+            queryFn: { _ in
+                try await fetchTodos()
+            }
+        ) { result in
+            switch result.status {
+            case .loading:
+                ProgressView("Loading...")
+            case .error:
+                Text("Error: \(result.error?.localizedDescription ?? "Unknown error")")
+            case .success:
+                List(result.data ?? []) { todo in
+                    Text(todo.title)
+                }
+            }
+        }
+    }
+    
+    func fetchTodos() async throws -> [Todo] {
+        // Your API call here
+    }
+}
+```
+
+### 3. Infinite Query
+
+```swift
+struct PokemonListView: View {
+    var body: some View {
+        UseInfiniteQuery(
+            queryKey: "pokemon-list",
+            queryFn: { _, pageParam in
+                let offset = pageParam ?? 0
+                return try await PokemonAPI.fetchPokemonPage(offset: offset)
+            },
+            getNextPageParam: { pages in
+                let currentTotal = pages.reduce(0) { total, page in 
+                    total + page.results.count 
+                }
+                return pages.last?.next != nil ? currentTotal : nil
+            },
+            initialPageParam: 0
+        ) { result in
+            ScrollView {
+                LazyVStack {
+                    // Render all pages
+                    ForEach(result.data?.pages ?? []) { page in
+                        ForEach(page.results) { pokemon in
+                            PokemonRow(pokemon: pokemon)
+                        }
+                    }
+                    
+                    // Load more button
+                    if result.hasNextPage {
+                        Button("Load More") {
+                            Task {
+                                await result.fetchNextPage()
+                            }
+                        }
+                        .onAppear {
+                            // Auto-load on scroll
+                            Task {
+                                await result.fetchNextPage()
+                            }
+                        }
+                    }
+                }
+            }
+            .refreshable {
+                try? await result.refetch()
+            }
+        }
+    }
+}
+```
 
 ## Development
 

@@ -591,11 +591,13 @@ struct MockQuery: AnyQuery {
     let queryHash: String
     let isStale: Bool
     let lastUpdated: Date?
+    let isActive: Bool
 
-    init(queryHash: String, isStale: Bool, lastUpdated: Date? = Date()) {
+    init(queryHash: String, isStale: Bool, lastUpdated: Date? = Date(), isActive: Bool = false) {
         self.queryHash = queryHash
         self.isStale = isStale
         self.lastUpdated = lastUpdated
+        self.isActive = isActive
     }
 }
 

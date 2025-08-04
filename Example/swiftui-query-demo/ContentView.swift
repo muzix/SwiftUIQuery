@@ -246,7 +246,8 @@ struct PokemonDetailView: View {
             UseQuery(
                 queryKey: "pokemon-\(pokemonId)",
                 queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemonId) },
-                staleTime: 10 * 60 // 10 minutes
+                staleTime: 10 * 60, // 10 minutes,
+                gcTime: 5
             ) { result in
                 ScrollView {
                     if result.isLoading {

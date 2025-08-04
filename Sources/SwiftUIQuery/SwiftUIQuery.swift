@@ -1044,6 +1044,7 @@ public protocol AnyQuery {
     var queryHash: String { get }
     var isStale: Bool { get }
     var lastUpdated: Date? { get }
+    var isActive: Bool { get }
 }
 
 /// Wrapper for query cache listeners to make them Hashable for Set storage

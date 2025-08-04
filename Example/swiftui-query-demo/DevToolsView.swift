@@ -157,19 +157,15 @@ struct QueryCacheView: View {
 struct CacheStatsView: View {
     @Environment(\.queryClient) private var queryClient
 
-    private var stats: (total: Int, stale: Int, fresh: Int, error: Int) {
-        guard let queryClient else { return (total: 0, stale: 0, fresh: 0, error: 0) }
+    private var stats: (total: Int, active: Int, stale: Int, fresh: Int) {
+        guard let queryClient else { return (total: 0, active: 0, stale: 0, fresh: 0) }
         let queries = queryClient.cache.allQueries
         let total = queries.count
+        let active = queries.count(where: { $0.isActive })
         let stale = queries.count(where: { $0.isStale })
         let fresh = total - stale
-        let error = queries.compactMap { _ -> String? in
-            // We need to access the error state somehow - this is a limitation of type erasure
-            // For now, we'll estimate based on query hash patterns or use reflection
-            nil
-        }.count
 
-        return (total: total, stale: stale, fresh: fresh, error: error)
+        return (total: total, active: active, stale: stale, fresh: fresh)
     }
 
     var body: some View {
@@ -179,11 +175,11 @@ struct CacheStatsView: View {
                     .font(.headline)
                     .fontWeight(.medium)
 
-                HStack(spacing: 20) {
+                HStack(spacing: 16) {
                     StatItem(label: "Total", value: stats.total, color: .blue)
+                    StatItem(label: "Active", value: stats.active, color: .purple)
                     StatItem(label: "Fresh", value: stats.fresh, color: .green)
                     StatItem(label: "Stale", value: stats.stale, color: .orange)
-                    StatItem(label: "Errors", value: stats.error, color: .red)
                 }
             }
             .padding()
@@ -224,7 +220,7 @@ struct QueryCacheItemView: View {
                 HStack(spacing: 12) {
                     // Status indicator
                     Circle()
-                        .fill(query.isStale ? Color.orange : Color.green)
+                        .fill(query.isActive ? Color.purple : (query.isStale ? Color.orange : Color.green))
                         .frame(width: 12, height: 12)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -249,16 +245,30 @@ struct QueryCacheItemView: View {
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 2) {
-                        // Status badge
-                        Text(query.isStale ? "STALE" : "FRESH")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(query.isStale ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
-                            .foregroundColor(query.isStale ? .orange : .green)
-                            .cornerRadius(4)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        // Active status badge
+                        HStack(spacing: 4) {
+                            if query.isActive {
+                                Text("ACTIVE")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.purple.opacity(0.2))
+                                    .foregroundColor(.purple)
+                                    .cornerRadius(4)
+                            }
+
+                            // Stale/Fresh status badge
+                            Text(query.isStale ? "STALE" : "FRESH")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(query.isStale ? Color.orange.opacity(0.2) : Color.green.opacity(0.2))
+                                .foregroundColor(query.isStale ? .orange : .green)
+                                .cornerRadius(4)
+                        }
 
                         Image(systemName: "chevron.right")
                             .font(.caption)
@@ -599,6 +609,12 @@ struct QueryDetailView: View {
                     // Status Information
                     DetailSection(title: "Status") {
                         VStack(spacing: 12) {
+                            StatusRow(
+                                label: "Active",
+                                value: query.isActive ? "Yes" : "No",
+                                color: query.isActive ? .purple : .secondary
+                            )
+
                             StatusRow(
                                 label: "Stale",
                                 value: query.isStale ? "Yes" : "No",

@@ -139,8 +139,7 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         self.initialState = config.state ?? Self.createInitialState(from: self.options)
         self.state = self.initialState
 
-        // Schedule garbage collection
-        scheduleGarbageCollection()
+        // Don't schedule GC on init - only when query becomes inactive
     }
 
     deinit {
@@ -183,6 +182,12 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     public var lastUpdated: Date? {
         guard state.dataUpdatedAt > 0 else { return nil }
         return Date(timeIntervalSince1970: Double(state.dataUpdatedAt) / 1000.0)
+    }
+
+    public var isActive: Bool {
+        !observers.isEmpty && observers.contains { observer in
+            observer.isEnabled()
+        }
     }
 
     // MARK: - Options Management
@@ -436,10 +441,9 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     public func addObserver(_ observer: AnyQueryObserver) {
         if !observers.contains(where: { $0.id == observer.id }) {
             observers.append(observer)
-            clearGarbageCollectionTimer()
 
-            // Notify cache of observer addition
-            // cache?.notify(.observerAdded(queryHash: queryHash))
+            // Stop the query from being garbage collected
+            clearGarbageCollectionTimer()
         }
     }
 
@@ -448,17 +452,22 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         observers.removeAll { $0.id == observer.id }
 
         if observers.isEmpty {
-            // Cancel fetch if no observers and allow revert
+            // Cancel ongoing fetch if no observers and allow revert
             if let revertState {
                 setState(revertState)
                 self.revertState = nil
             }
 
+            // If the query is still fetching, let it continue to cache the result
+            // Only cancel if we can safely revert
+            if fetchTask != nil, revertState != nil {
+                fetchTask?.cancel()
+                fetchTask = nil
+            }
+
+            // Schedule garbage collection when no observers remain
             scheduleGarbageCollection()
         }
-
-        // Notify cache of observer removal
-        // cache?.notify(.observerRemoved(queryHash: queryHash))
     }
 
     /// Get the number of active observers
@@ -466,17 +475,10 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         observers.count
     }
 
-    /// Check if query is currently active (has enabled observers)
-    public func isActive() -> Bool {
-        !observers.isEmpty && observers.contains { observer in
-            observer.isEnabled()
-        }
-    }
-
     /// Check if query is disabled
     public func isDisabled() -> Bool {
         if observerCount > 0 {
-            return !isActive()
+            return !isActive
         }
 
         // No observers and never fetched = disabled
@@ -685,30 +687,54 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         from oldState: QueryState<TData>,
         to newState: QueryState<TData>
     ) {
-        // Handle any necessary side effects based on state changes
-        // This could include triggering cache notifications, etc.
+        // If fetch starts, clear any pending GC (query is now active)
+        if oldState.fetchStatus != .fetching, newState.fetchStatus == .fetching {
+            clearGarbageCollectionTimer()
+        }
+
+        // If fetch finishes, potentially schedule GC
+        if oldState.fetchStatus == .fetching, newState.fetchStatus == .idle {
+            // Schedule GC if query becomes inactive (no observers)
+            if observers.isEmpty {
+                scheduleGarbageCollection()
+            }
+        }
     }
 
     /// Schedule garbage collection for inactive queries
+    /// Only schedules GC if query has no observers and is idle
     private func scheduleGarbageCollection() {
         clearGarbageCollectionTimer()
 
+        // Only schedule GC if query is inactive (no observers) and not fetching
         guard observers.isEmpty, state.fetchStatus == .idle else { return }
 
         let gcTime = options.gcTime
-        guard gcTime > 0 else { return }
 
-        gcTimer = Timer.scheduledTimer(withTimeInterval: gcTime, repeats: false) { [weak self] _ in
+        // Don't schedule if gcTime is 0 or negative (disabled)
+        // Default to 5 minutes if not set (like React Query)
+        let effectiveGcTime = gcTime > 0 ? gcTime : 5 * 60 // 5 minutes default
+
+        #if DEBUG
+            print("🗑️ SwiftUI Query: Scheduling GC for \(queryHash) in \(effectiveGcTime)s")
+        #endif
+
+        gcTimer = Timer.scheduledTimer(withTimeInterval: effectiveGcTime, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.performGarbageCollection()
+                self?.optionalRemove()
             }
         }
     }
 
     /// Clear garbage collection timer
     private func clearGarbageCollectionTimer() {
-        gcTimer?.invalidate()
-        gcTimer = nil
+        if gcTimer != nil {
+            #if DEBUG
+                print("🗑️ SwiftUI Query: Clearing GC timer for \(queryHash)")
+            #endif
+            gcTimer?.invalidate()
+            gcTimer = nil
+        }
     }
 
     /// Update garbage collection time when options change
@@ -718,10 +744,23 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         }
     }
 
-    /// Perform garbage collection (remove from cache)
-    private func performGarbageCollection() {
-        guard observers.isEmpty, state.fetchStatus == .idle else { return }
-        destroy()
+    /// Optionally remove query from cache if conditions are met
+    /// Matches React Query's optionalRemove logic
+    private func optionalRemove() {
+        // Only remove if query has no observers and is not fetching
+        guard observers.isEmpty, state.fetchStatus == .idle else {
+            #if DEBUG
+                print("🗑️ SwiftUI Query: GC cancelled for \(queryHash) - Query is active")
+            #endif
+            return
+        }
+
+        #if DEBUG
+            print("🗑️ SwiftUI Query: Executing GC for \(queryHash)")
+        #endif
+
+        // Remove from cache (let cache handle the cleanup)
+        cache?.remove(self)
     }
 
     /// Clean up resources

@@ -115,26 +115,30 @@ struct DemoButton: View {
 
 struct PokemonListView: View {
     @State private var showDevTools = false
+    @State private var initialOffset = 0
+    @State private var showOffsetPicker = false
 
     var body: some View {
         WithPerceptionTracking {
             UseInfiniteQuery(
-                queryKey: "pokemon-infinite-list",
+                queryKey: "pokemon-infinite-list-\(initialOffset)", // Include offset in key for cache separation
                 queryFn: { _, pageParam in
-                    try await PokemonAPI.fetchPokemonPage(offset: pageParam ?? 0)
+                    let offset = pageParam ?? initialOffset
+                    return try await PokemonAPI.fetchPokemonPage(offset: offset)
                 },
                 getNextPageParam: { pages in
-                    // Calculate next offset based on current pages
+                    // Calculate next offset based on current pages and initial offset
                     let currentTotal = pages.reduce(0) { total, page in total + page.results.count }
+                    let nextOffset = initialOffset + currentTotal
                     let lastPage = pages.last
 
                     // If we have next URL or haven't reached the total count, continue pagination
                     if let lastPage, lastPage.next != nil {
-                        return currentTotal
+                        return nextOffset
                     }
                     return nil // No more pages
                 },
-                initialPageParam: 0,
+                initialPageParam: initialOffset,
                 staleTime: 5 * 60 // 5 minutes before considered stale
             ) { result in
                 if result.isLoading, result.data?.pages.isEmpty != false {
@@ -233,6 +237,14 @@ struct PokemonListView: View {
             }
             .navigationTitle("Pokemon")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Start at #\(initialOffset + 1)") {
+                        showOffsetPicker = true
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("🛠️") {
                         showDevTools = true
@@ -241,6 +253,9 @@ struct PokemonListView: View {
             }
             .sheet(isPresented: $showDevTools) {
                 DevToolsView()
+            }
+            .sheet(isPresented: $showOffsetPicker) {
+                OffsetPickerView(initialOffset: $initialOffset)
             }
         }
     }
@@ -796,5 +811,114 @@ struct ErrorView: View {
         ErrorView(error: URLError(.notConnectedToInternet)) {
             print("Retry tapped")
         }
+    }
+}
+
+// MARK: - Offset Picker View
+
+struct OffsetPickerView: View {
+    @Binding var initialOffset: Int
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedOffset: Int
+
+    init(initialOffset: Binding<Int>) {
+        self._initialOffset = initialOffset
+        self._selectedOffset = State(initialValue: initialOffset.wrappedValue)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(spacing: 16) {
+                    Text("🎯")
+                        .font(.system(size: 50))
+
+                    Text("Choose Starting Pokemon")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text(
+                        "Select which Pokemon number to start the list from. This demonstrates how infinite queries can begin from any offset."
+                    )
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                }
+
+                VStack(spacing: 20) {
+                    // Quick preset buttons
+                    Text("Quick Presets")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                        ForEach([0, 50, 100, 150, 200, 250, 300, 350, 400], id: \.self) { offset in
+                            Button("Pokemon #\(offset + 1)") {
+                                selectedOffset = offset
+                            }
+                            .buttonStyle(.bordered)
+                            .foregroundColor(selectedOffset == offset ? .blue : .primary)
+                            .fontWeight(selectedOffset == offset ? .semibold : .regular)
+                        }
+                    }
+
+                    Divider()
+
+                    // Custom offset input
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Custom Pokemon Number")
+                            .font(.headline)
+
+                        HStack {
+                            Text("Start at Pokemon #")
+                            TextField("1", value: Binding(
+                                get: { selectedOffset + 1 }, // Convert offset to Pokemon number
+                                set: { selectedOffset = max(0, $0 - 1) } // Convert Pokemon number to offset
+                            ), format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .keyboardType(.numberPad)
+                                .frame(width: 80)
+                        }
+
+                        Text("Enter a number between 1 and 1000")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Button("Start from Pokemon #\(max(1, selectedOffset + 1))") {
+                        // Ensure valid range (0-999 for API compatibility)
+                        let validOffset = max(0, min(selectedOffset, 999))
+                        initialOffset = validOffset
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedOffset < 0)
+
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding()
+            .navigationTitle("Starting Pokemon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        let validOffset = max(0, min(selectedOffset, 999))
+                        initialOffset = validOffset
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

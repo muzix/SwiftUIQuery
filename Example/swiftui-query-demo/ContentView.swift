@@ -121,7 +121,7 @@ struct PokemonListView: View {
             UseQuery(
                 queryKey: "pokemon-list",
                 queryFn: { _ in try await PokemonAPI.fetchPokemonList(limit: 50) },
-                staleTime: 5 * 60 // 5 minutes before considered stale
+                staleTime: 5 // 5 minutes before considered stale
             ) { result in
                 if result.isLoading {
                     VStack(spacing: 16) {

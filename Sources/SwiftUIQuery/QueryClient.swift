@@ -233,7 +233,7 @@ public final class QueryClient {
             retryConfig: defaultOptions.queries?.retryConfig ?? RetryConfig(),
             networkMode: defaultOptions.queries?.networkMode ?? .online,
             staleTime: defaultOptions.queries?.staleTime ?? 0,
-            gcTime: defaultOptions.queries?.gcTime ?? 5 * 60,
+            gcTime: defaultOptions.queries?.gcTime ?? defaultGcTime,
             refetchTriggers: defaultOptions.queries?.refetchTriggers ?? .default,
             refetchOnAppear: .always,
             initialData: nil,

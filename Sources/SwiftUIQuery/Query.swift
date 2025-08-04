@@ -197,7 +197,7 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     public var isEligibleForGC: Bool {
         guard let inactiveAt else { return false }
 
-        let effectiveGcTime = options.gcTime > 0 ? options.gcTime : 5 * 60 // 5 minutes default
+        let effectiveGcTime = options.gcTime > 0 ? options.gcTime : defaultGcTime
         let timeSinceInactive = Date().timeIntervalSince(inactiveAt)
         return timeSinceInactive >= effectiveGcTime
     }

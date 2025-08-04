@@ -322,6 +322,11 @@ public struct AnyCodable: Sendable, Codable, Hashable {
     }
 }
 
+// MARK: - Constants
+
+/// Default garbage collection time in seconds (5 minutes)
+public let defaultGcTime: TimeInterval = 5 * 60
+
 // MARK: - Query Function Types
 
 /// Function signature for query functions
@@ -459,7 +464,7 @@ public struct InfiniteQueryOptions<
         retryConfig: RetryConfig = RetryConfig(),
         networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
-        gcTime: TimeInterval = 5 * 60,
+        gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .always,
         structuralSharing: Bool = true,

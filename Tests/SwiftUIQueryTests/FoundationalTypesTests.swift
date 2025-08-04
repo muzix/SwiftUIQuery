@@ -606,7 +606,7 @@ struct MockQuery: AnyQuery {
         isStale: Bool,
         lastUpdated: Date? = Date(),
         isActive: Bool = false,
-        gcTime: TimeInterval = 5 * 60
+        gcTime: TimeInterval = defaultGcTime
     ) {
         self.queryHash = queryHash
         self.isStale = isStale

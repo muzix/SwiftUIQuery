@@ -47,7 +47,7 @@ struct UseQueryTests {
 
         #expect(useQuery.testObserver.options.queryKey == "user-123")
         #expect(useQuery.testObserver.options.staleTime == 0)
-        #expect(useQuery.testObserver.options.gcTime == 5 * 60)
+        #expect(useQuery.testObserver.options.gcTime == defaultGcTime)
         #expect(useQuery.testObserver.options.enabled == true)
     }
 
@@ -62,7 +62,7 @@ struct UseQueryTests {
 
         #expect(useQuery.testObserver.options.queryKey == ["posts", "user-123"])
         #expect(useQuery.testObserver.options.staleTime == 0)
-        #expect(useQuery.testObserver.options.gcTime == 5 * 60)
+        #expect(useQuery.testObserver.options.gcTime == defaultGcTime)
         #expect(useQuery.testObserver.options.enabled == true)
     }
 

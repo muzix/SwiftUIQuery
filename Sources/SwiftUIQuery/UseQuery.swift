@@ -100,6 +100,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - initialData: Initial data to show while the query loads
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
@@ -108,6 +109,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = 5 * 60,
         enabled: Bool = true,
+        initialData: TData? = nil,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) {
@@ -120,7 +122,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
             gcTime: gcTime,
             refetchTriggers: RefetchTriggers.default,
             refetchOnAppear: RefetchOnAppear.ifStale,
-            initialData: nil as TData?,
+            initialData: initialData,
             initialDataFunction: nil as InitialDataFunction<TData>?,
             structuralSharing: true,
             meta: nil as QueryMeta?,
@@ -217,6 +219,7 @@ extension UseQuery {
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - initialData: Initial data to show while the query loads
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
@@ -225,6 +228,7 @@ extension UseQuery {
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = 5 * 60,
         enabled: Bool = true,
+        initialData: TData? = nil,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) where TKey == String {
@@ -237,7 +241,7 @@ extension UseQuery {
             gcTime: gcTime,
             refetchTriggers: RefetchTriggers.default,
             refetchOnAppear: RefetchOnAppear.ifStale,
-            initialData: nil as TData?,
+            initialData: initialData,
             initialDataFunction: nil as InitialDataFunction<TData>?,
             structuralSharing: true,
             meta: nil as QueryMeta?,
@@ -259,6 +263,7 @@ extension UseQuery {
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - initialData: Initial data to show while the query loads
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
@@ -267,6 +272,7 @@ extension UseQuery {
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = 5 * 60,
         enabled: Bool = true,
+        initialData: TData? = nil,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) where TKey == [String] {
@@ -279,7 +285,7 @@ extension UseQuery {
             gcTime: gcTime,
             refetchTriggers: RefetchTriggers.default,
             refetchOnAppear: RefetchOnAppear.ifStale,
-            initialData: nil as TData?,
+            initialData: initialData,
             initialDataFunction: nil as InitialDataFunction<TData>?,
             structuralSharing: true,
             meta: nil as QueryMeta?,

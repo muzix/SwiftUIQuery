@@ -76,6 +76,7 @@ enum PokemonAPI {
         let url = URL(safeString: "https://pokeapi.co/api/v2/pokemon/\(id)")
         print("🔥 API CALL: Fetching Pokemon with ID \(id) from \(url)")
         do {
+            try await Task.sleep(nanoseconds: UInt64(5 * 1_000_000_000))
             let (data, _) = try await URLSession.shared.data(from: url)
             let pokemon = try JSONDecoder().decode(Pokemon.self, from: data)
             print("✅ API SUCCESS: Fetched Pokemon '\(pokemon.name)' (ID: \(id))")

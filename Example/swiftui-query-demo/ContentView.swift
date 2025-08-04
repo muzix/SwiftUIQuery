@@ -61,6 +61,9 @@ struct PokemonListView: View {
             }
             .navigationTitle("Pokemon")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink("Initial Data", destination: InitialDataDemoView())
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink("Search", destination: PokemonSearchView())
                 }

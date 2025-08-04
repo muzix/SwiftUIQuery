@@ -132,12 +132,12 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         self.defaultOptions = config.defaultOptions
         self.cache = cache
 
-        // Initialize with default state
-        self.initialState = QueryState<TData>.defaultState()
-        self.state = config.state ?? self.initialState
-
-        // Set options (merging defaults)
+        // Set options (merging defaults) first so we can use them for initial state
         self.options = Self.mergeOptions(config.options, config.defaultOptions)
+
+        // Initialize with state that considers initial data
+        self.initialState = config.state ?? Self.createInitialState(from: self.options)
+        self.state = self.initialState
 
         // Schedule garbage collection
         scheduleGarbageCollection()
@@ -191,6 +191,55 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     public func setOptions(_ newOptions: QueryOptions<TData, TKey>?) {
         self.options = Self.mergeOptions(newOptions, defaultOptions)
         updateGarbageCollectionTime()
+    }
+
+    /// Create initial state from query options, handling initial data
+    private static func createInitialState(from options: QueryOptions<TData, TKey>) -> QueryState<TData> {
+        // Check for initial data (direct value or function)
+        let initialData: TData? = if let directData = options.initialData {
+            directData
+        } else if let initialDataFunction = options.initialDataFunction {
+            initialDataFunction()
+        } else {
+            nil
+        }
+
+        // Create state with initial data if present
+        if let data = initialData {
+            // Calculate timestamp for initial data based on staleTime
+            // If staleTime is 0 (default), set timestamp in the past to make data immediately stale
+            // If staleTime > 0, set timestamp so data becomes stale after staleTime duration
+            // This matches TanStack Query's behavior where initial data staleness respects staleTime
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let staleTimeMs = Int64(options.staleTime * 1000) // Convert to milliseconds
+
+            let initialDataTimestamp: Int64 = if staleTimeMs <= 0 {
+                // With staleTime 0 or negative, make data immediately stale
+                now - 1
+            } else {
+                // With positive staleTime, set timestamp so data becomes stale exactly after staleTime
+                // Set it to (now - staleTime) so that (now - timestamp) == staleTime (i.e., just stale)
+                now - staleTimeMs
+            }
+
+            return QueryState<TData>(
+                data: data,
+                dataUpdateCount: 0, // Initial data doesn't count as an update
+                dataUpdatedAt: initialDataTimestamp,
+                error: nil,
+                errorUpdateCount: 0,
+                errorUpdatedAt: 0,
+                fetchFailureCount: 0,
+                fetchFailureReason: nil,
+                fetchMeta: nil,
+                isInvalidated: false,
+                status: .success, // Initial data means we start in success state
+                fetchStatus: .idle
+            )
+        } else {
+            // No initial data, use default state
+            return QueryState<TData>.defaultState()
+        }
     }
 
     private static func mergeOptions(

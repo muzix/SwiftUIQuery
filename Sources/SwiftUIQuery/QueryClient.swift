@@ -100,6 +100,9 @@ public final class QueryClient {
     public init(config: QueryClientConfig = QueryClientConfig()) {
         self.queryCache = config.queryCache ?? QueryCache()
         self.defaultOptions = config.defaultOptions ?? DefaultQueryOptions()
+
+        // Register cache with garbage collector
+        GarbageCollector.shared.register(queryCache)
     }
 
     // MARK: - Lifecycle Management
@@ -109,6 +112,9 @@ public final class QueryClient {
     public func mount() {
         mountCount += 1
         if mountCount != 1 { return }
+
+        // Start garbage collector
+        GarbageCollector.shared.start()
 
         // TODO: Subscribe to focus manager
         // focusUnsubscriber = FocusManager.shared.subscribe { [weak self] focused in

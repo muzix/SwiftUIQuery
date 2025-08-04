@@ -121,8 +121,7 @@ struct PokemonListView: View {
             UseQuery(
                 queryKey: "pokemon-list",
                 queryFn: { _ in try await PokemonAPI.fetchPokemonList(limit: 50) },
-                staleTime: 5 * 60, // 5 minutes before considered stale
-                gcTime: 10 * 60 // 10 minutes before garbage collected
+                staleTime: 5 * 60 // 5 minutes before considered stale
             ) { result in
                 if result.isLoading {
                     VStack(spacing: 16) {
@@ -246,8 +245,7 @@ struct PokemonDetailView: View {
             UseQuery(
                 queryKey: "pokemon-\(pokemonId)",
                 queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemonId) },
-                staleTime: 10 * 60, // 10 minutes,
-                gcTime: 5
+                staleTime: 10 * 60 // 10 minutes,
             ) { result in
                 ScrollView {
                     if result.isLoading {

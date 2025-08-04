@@ -592,12 +592,27 @@ struct MockQuery: AnyQuery {
     let isStale: Bool
     let lastUpdated: Date?
     let isActive: Bool
+    let gcTime: TimeInterval
 
-    init(queryHash: String, isStale: Bool, lastUpdated: Date? = Date(), isActive: Bool = false) {
+    var isEligibleForGC: Bool {
+        // Mock implementation: not active and past gcTime
+        guard !isActive, let lastUpdated else { return !isActive }
+        let timeSinceUpdate = Date().timeIntervalSince(lastUpdated)
+        return timeSinceUpdate >= gcTime
+    }
+
+    init(
+        queryHash: String,
+        isStale: Bool,
+        lastUpdated: Date? = Date(),
+        isActive: Bool = false,
+        gcTime: TimeInterval = 5 * 60
+    ) {
         self.queryHash = queryHash
         self.isStale = isStale
         self.lastUpdated = lastUpdated
         self.isActive = isActive
+        self.gcTime = gcTime
     }
 }
 

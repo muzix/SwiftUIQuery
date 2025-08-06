@@ -630,8 +630,30 @@ public final class InfiniteQuery<
     /// Initial fetch for the first page
     /// This resets the query data and fetches from the beginning
     public func internalFetch() async throws -> InfiniteData<TData, TPageParam> {
-        // Reset to initial state to clear all existing pages
-        setState(initialState)
+        // Reset data but preserve status for refetch scenarios
+        // Only use pending status if we've never successfully fetched data
+        let resetState: QueryState<InfiniteData<TData, TPageParam>> = if state.dataUpdateCount > 0 {
+            // This is a refetch - preserve success status to avoid isLoading becoming true
+            QueryState(
+                data: InfiniteData<TData, TPageParam>(),
+                dataUpdateCount: state.dataUpdateCount,
+                dataUpdatedAt: state.dataUpdatedAt,
+                error: nil,
+                errorUpdateCount: state.errorUpdateCount,
+                errorUpdatedAt: state.errorUpdatedAt,
+                fetchFailureCount: 0,
+                fetchFailureReason: nil,
+                fetchMeta: nil,
+                isInvalidated: false,
+                status: .success, // Preserve success status for refetch
+                fetchStatus: .idle
+            )
+        } else {
+            // First fetch - use initial state with pending status
+            initialState
+        }
+
+        setState(resetState)
 
         let initialParam = options.initialPageParam
         return try await fetchPage(param: initialParam, direction: .forward)

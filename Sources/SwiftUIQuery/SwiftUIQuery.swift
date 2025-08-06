@@ -339,7 +339,7 @@ public typealias InitialDataFunction<TData: Sendable> = @Sendable () -> TData?
 
 /// Configuration options for queries
 /// Equivalent to TanStack Query's QueryOptions
-public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable {
+public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable, Equatable {
     /// The query key that uniquely identifies this query
     public let queryKey: TKey
     /// The function that will be called to fetch data
@@ -366,6 +366,15 @@ public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable {
     public let meta: QueryMeta?
     /// Whether this query is enabled (will fetch automatically)
     public let enabled: Bool
+
+    public static func == (lhs: QueryOptions<TData, TKey>, rhs: QueryOptions<TData, TKey>) -> Bool {
+        lhs.queryKey == rhs.queryKey &&
+            lhs.staleTime == rhs.staleTime &&
+            lhs.gcTime == rhs.gcTime &&
+            lhs.refetchTriggers == rhs.refetchTriggers &&
+            lhs.refetchOnAppear == rhs.refetchOnAppear &&
+            lhs.enabled == rhs.enabled
+    }
 
     public init(
         queryKey: TKey,

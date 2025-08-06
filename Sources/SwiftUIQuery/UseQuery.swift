@@ -168,42 +168,7 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         .onDisappear {
             observer.unsubscribe()
         }
-        .onChange(of: options.queryKey) { newKey in
-            let newOptions = QueryOptions<TData, TKey>(
-                queryKey: newKey,
-                queryFn: options.queryFn,
-                retryConfig: options.retryConfig,
-                networkMode: options.networkMode,
-                staleTime: options.staleTime,
-                gcTime: options.gcTime,
-                refetchTriggers: options.refetchTriggers,
-                refetchOnAppear: options.refetchOnAppear,
-                initialData: options.initialData,
-                initialDataFunction: options.initialDataFunction,
-                structuralSharing: options.structuralSharing,
-                meta: options.meta,
-                enabled: options.enabled
-            )
-            observer.setOptions(newOptions)
-        }
-        .onChange(of: options.enabled) { newEnabled in
-            // Update observer options when enabled state changes
-            // Create new options using the new enabled value
-            let newOptions = QueryOptions<TData, TKey>(
-                queryKey: options.queryKey,
-                queryFn: options.queryFn,
-                retryConfig: options.retryConfig,
-                networkMode: options.networkMode,
-                staleTime: options.staleTime,
-                gcTime: options.gcTime,
-                refetchTriggers: options.refetchTriggers,
-                refetchOnAppear: options.refetchOnAppear,
-                initialData: options.initialData,
-                initialDataFunction: options.initialDataFunction,
-                structuralSharing: options.structuralSharing,
-                meta: options.meta,
-                enabled: newEnabled // Use the new enabled value from closure
-            )
+        .onChange(of: options) { newOptions in
             observer.setOptions(newOptions)
         }
     }

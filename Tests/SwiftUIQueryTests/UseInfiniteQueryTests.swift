@@ -7,12 +7,12 @@ struct PostPage: Sendable, Codable, Equatable {
     let posts: [Post]
     let nextCursor: Int?
 
-    static func create(start: Int, count: Int) -> PostPage {
+    static func create(start: Int, count: Int) -> Self {
         let posts = (start ..< (start + count)).map { id in
             Post(id: id, title: "Post \(id)", content: "Content for post \(id)")
         }
         let nextCursor = start + count < 100 ? start + count : nil // Simulate 100 total posts
-        return PostPage(posts: posts, nextCursor: nextCursor)
+        return Self(posts: posts, nextCursor: nextCursor)
     }
 }
 
@@ -32,10 +32,10 @@ struct UseInfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -53,10 +53,10 @@ struct UseInfiniteQueryTests {
         let useInfiniteQuery = UseInfiniteQuery<PostPage, String, Int, EmptyView>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         ) { _ in
@@ -73,10 +73,10 @@ struct UseInfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -102,10 +102,10 @@ struct UseInfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -137,10 +137,10 @@ struct UseInfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -160,10 +160,10 @@ struct UseInfiniteQueryTests {
         let useInfiniteQuery = UseInfiniteQuery(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             }
         ) { _ in
             EmptyView()
@@ -184,10 +184,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -207,10 +207,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -242,10 +242,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -278,10 +278,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0,
             enabled: false
@@ -296,10 +296,10 @@ struct InfiniteQueryObserverTests {
         let enabledOptions = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0,
             enabled: true
@@ -316,10 +316,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -337,10 +337,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getPreviousPageParam: { pages in
-                return pages.first?.nextCursor // Simplified logic for testing
+                pages.first?.nextCursor // Simplified logic for testing
             },
             initialPageParam: 0
         )
@@ -358,10 +358,10 @@ struct InfiniteQueryObserverTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -493,10 +493,10 @@ struct InfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -529,10 +529,10 @@ struct InfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getPreviousPageParam: { pages in
-                return pages.first?.nextCursor // Simplified logic for testing
+                pages.first?.nextCursor // Simplified logic for testing
             },
             initialPageParam: 0
         )
@@ -565,10 +565,10 @@ struct InfiniteQueryTests {
         let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
             queryKey: "posts",
             queryFn: { _, cursor in
-                return PostPage.create(start: cursor ?? 0, count: 10)
+                PostPage.create(start: cursor ?? 0, count: 10)
             },
             getNextPageParam: { pages in
-                return pages.last?.nextCursor
+                pages.last?.nextCursor
             },
             initialPageParam: 0
         )
@@ -587,5 +587,126 @@ struct InfiniteQueryTests {
 
         // The fetchDirection would be set during actual fetch operations
         // This test verifies the property is accessible
+    }
+
+    @Test("InfiniteQuery refetch preserves success status")
+    func infiniteQueryRefetchPreservesSuccessStatus() async throws {
+        let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
+            queryKey: "posts",
+            queryFn: { _, cursor in
+                PostPage.create(start: cursor ?? 0, count: 10)
+            },
+            getNextPageParam: { pages in
+                pages.last?.nextCursor
+            },
+            initialPageParam: 0
+        )
+
+        let config = InfiniteQueryConfig<PostPage, String, Int>(
+            queryKey: "posts",
+            queryHash: "posts",
+            options: options
+        )
+
+        let queryCache = QueryCache()
+        let infiniteQuery = InfiniteQuery<PostPage, String, Int>(config: config, cache: queryCache)
+
+        // First fetch - should start with pending status
+        #expect(infiniteQuery.state.status == .pending)
+        #expect(infiniteQuery.state.dataUpdateCount == 0)
+
+        // Execute first fetch
+        _ = try await infiniteQuery.internalFetch()
+
+        // After first successful fetch
+        #expect(infiniteQuery.state.status == .success)
+        #expect(infiniteQuery.state.dataUpdateCount > 0)
+        let dataUpdateCountAfterFirstFetch = infiniteQuery.state.dataUpdateCount
+
+        // Execute refetch - this should preserve success status
+        _ = try await infiniteQuery.internalFetch()
+
+        // After refetch, status should remain success (not pending)
+        // This ensures isLoading doesn't become true on refetch
+        #expect(infiniteQuery.state.status == .success)
+        #expect(infiniteQuery.state.dataUpdateCount >= dataUpdateCountAfterFirstFetch)
+
+        // The key test: during refetch, isLoading should NOT be true
+        // isLoading = isPending && isFetching
+        // Since status is .success (not .pending), isLoading should be false
+        let observer = InfiniteQueryObserver(client: QueryClient(), options: options)
+        observer.subscribe()
+        #expect(observer.isLoading == false) // Should be false because status is .success
+        #expect(observer.isRefetching == true || observer.isFetching == false) // Either refetching or done
+    }
+
+    @Test("InfiniteQuery refetch preserves existing data during fetch")
+    func infiniteQueryRefetchPreservesExistingDataDuringFetch() async throws {
+        let fetchCounter = FetchCounter()
+        let options = InfiniteQueryOptions<PostPage, QueryError, String, Int>(
+            queryKey: "posts",
+            queryFn: { _, cursor in
+                await fetchCounter.increment()
+                // Simulate delay to test data preservation during fetch
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                return PostPage.create(start: cursor ?? 0, count: 10)
+            },
+            getNextPageParam: { pages in
+                pages.last?.nextCursor
+            },
+            initialPageParam: 0
+        )
+
+        let config = InfiniteQueryConfig<PostPage, String, Int>(
+            queryKey: "posts",
+            queryHash: "posts",
+            options: options
+        )
+
+        let queryCache = QueryCache()
+        let infiniteQuery = InfiniteQuery<PostPage, String, Int>(config: config, cache: queryCache)
+
+        // First fetch - should start with no data
+        #expect(infiniteQuery.state.data == nil || infiniteQuery.state.data?.isEmpty == true)
+
+        // Execute first fetch
+        let firstData = try await infiniteQuery.internalFetch()
+        #expect(firstData.pages.count == 1)
+        #expect(infiniteQuery.state.data?.pages.count == 1)
+
+        // Store the data after first fetch
+        let dataAfterFirstFetch = infiniteQuery.state.data
+
+        // Start second fetch (refetch) in background
+        let refetchTask = Task {
+            try await infiniteQuery.internalFetch()
+        }
+
+        // Give it a moment to start fetching
+        try await Task.sleep(nanoseconds: 10_000_000) // 0.01 seconds
+
+        // During refetch, the existing data should still be present
+        // This is the key behavior - old data remains visible during refetch
+        #expect(infiniteQuery.state.fetchStatus == .fetching)
+        #expect(infiniteQuery.state.data?.pages.count == dataAfterFirstFetch?.pages.count)
+        #expect(infiniteQuery.state.data?.pages.first?.posts == dataAfterFirstFetch?.pages.first?.posts)
+
+        // Wait for refetch to complete
+        let refetchedData = try await refetchTask.value
+
+        // After refetch, new data should be present
+        #expect(refetchedData.pages.count == 1)
+        #expect(infiniteQuery.state.data?.pages.count == 1)
+        #expect(await fetchCounter.count == 2) // Verify fetch was called twice
+    }
+}
+
+// Helper class for thread-safe counting
+@MainActor
+final class FetchCounter {
+    private(set) var count = 0
+
+    func increment() {
+        count += 1
     }
 }

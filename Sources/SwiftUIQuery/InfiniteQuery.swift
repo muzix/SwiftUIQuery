@@ -628,35 +628,67 @@ public final class InfiniteQuery<
     }
 
     /// Initial fetch for the first page
-    /// This resets the query data and fetches from the beginning
+    /// This preserves existing data during refetch to avoid empty page (TanStack Query behavior)
     public func internalFetch() async throws -> InfiniteData<TData, TPageParam> {
-        // Reset data but preserve status for refetch scenarios
-        // Only use pending status if we've never successfully fetched data
-        let resetState: QueryState<InfiniteData<TData, TPageParam>> = if state.dataUpdateCount > 0 {
-            // This is a refetch - preserve success status to avoid isLoading becoming true
-            QueryState(
-                data: InfiniteData<TData, TPageParam>(),
-                dataUpdateCount: state.dataUpdateCount,
-                dataUpdatedAt: state.dataUpdatedAt,
-                error: nil,
-                errorUpdateCount: state.errorUpdateCount,
-                errorUpdatedAt: state.errorUpdatedAt,
-                fetchFailureCount: 0,
-                fetchFailureReason: nil,
-                fetchMeta: nil,
-                isInvalidated: false,
-                status: .success, // Preserve success status for refetch
-                fetchStatus: .idle
-            )
-        } else {
-            // First fetch - use initial state with pending status
-            initialState
-        }
+        // Store current state to revert if fetch is cancelled
+        revertState = state
 
-        setState(resetState)
+        // Cancel any existing fetch
+        fetchTask?.cancel()
+
+        // Update fetch status to indicate we're fetching
+        // This preserves existing data while showing fetching state
+        dispatch(.fetch(meta: nil))
 
         let initialParam = options.initialPageParam
-        return try await fetchPage(param: initialParam, direction: .forward)
+
+        // Create new fetch task
+        let task = Task<InfiniteData<TData, TPageParam>, Error> { @MainActor in
+            do {
+                // Execute the query function with initial page parameter
+                let pageData = try await options.queryFn(queryKey, initialParam)
+
+                // Check if task was cancelled
+                if Task.isCancelled {
+                    throw QueryError.cancelled
+                }
+
+                // Create new infinite data with the first page
+                let newData = InfiniteData(pages: [pageData], pageParams: [initialParam])
+
+                // Update state with the new data (replacing old data)
+                dispatch(.success(data: newData, dataUpdatedAt: nil, manual: false))
+
+                // Clear the fetch task and direction
+                self.fetchTask = nil
+                self.currentFetchDirection = nil
+
+                return newData
+            } catch {
+                // Handle error cases
+                if Task.isCancelled {
+                    throw QueryError.cancelled
+                }
+
+                let typedError: QueryError = if let queryError = error as? QueryError {
+                    queryError
+                } else {
+                    classifyError(error)
+                }
+
+                dispatch(.error(error: typedError))
+
+                self.fetchTask = nil
+                self.currentFetchDirection = nil
+                throw typedError
+            }
+        }
+
+        // Store the task
+        fetchTask = task
+
+        // Wait for the task to complete
+        return try await task.value
     }
 
     // MARK: - Observer Management

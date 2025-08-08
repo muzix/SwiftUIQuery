@@ -107,7 +107,7 @@ enum PokemonAPI {
     /// - Parameter pageParam: The offset for pagination (0 for first page, 20 for second, etc.)
     /// - Returns: PokemonList containing results for this page
     static func fetchPokemonPage(offset: Int) async throws -> PokemonList {
-        return try await fetchPokemonList(limit: 20, offset: offset)
+        try await fetchPokemonList(limit: 20, offset: offset)
     }
 
     static func searchPokemon(name: String) async throws -> Pokemon {

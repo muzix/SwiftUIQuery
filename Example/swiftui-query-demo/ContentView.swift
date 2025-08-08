@@ -119,148 +119,147 @@ struct PokemonListView: View {
     @State private var showOffsetPicker = false
 
     var body: some View {
-        WithPerceptionTracking {
-            // Capture the initial offset value before the closures
-            let initialOffset = self.initialOffset
-            let capturedOffset = initialOffset
+        // Capture the initial offset value before the closures
+        let initialOffset = self.initialOffset
+        let capturedOffset = initialOffset
 
-            UseInfiniteQuery(
-                queryKey: "pokemon-infinite-list-\(initialOffset)", // Include offset in key for cache separation
-                queryFn: { _, pageParam in
-                    let offset = pageParam ?? initialOffset
-                    return try await PokemonAPI.fetchPokemonPage(offset: offset + capturedOffset)
-                },
-                getNextPageParam: { pages in
-                    // Calculate next offset based on current pages and initial offset
-                    let currentTotal = pages.reduce(0) { total, page in total + page.results.count }
-                    let nextOffset = currentTotal
-                    let lastPage = pages.last
+        UseInfiniteQuery(
+            queryKey: "pokemon-infinite-list-\(initialOffset)", // Include offset in key for cache separation
+            queryFn: { _, pageParam in
+                let offset = pageParam ?? initialOffset
+                return try await PokemonAPI.fetchPokemonPage(offset: offset + capturedOffset)
+            },
+            getNextPageParam: { pages in
+                // Calculate next offset based on current pages and initial offset
+                let currentTotal = pages.reduce(0) { total, page in total + page.results.count }
+                let nextOffset = currentTotal
+                let lastPage = pages.last
 
-                    // If we have next URL or haven't reached the total count, continue pagination
-                    if let lastPage, lastPage.next != nil {
-                        return nextOffset
+                // If we have next URL or haven't reached the total count, continue pagination
+                if let lastPage, lastPage.next != nil {
+                    return nextOffset
+                }
+                return nil // No more pages
+            },
+            initialPageParam: 0,
+            staleTime: 5 * 60 // 5 minutes before considered stale
+        ) { result in
+            if result.isLoading, result.data?.pages.isEmpty != false {
+                // Initial loading state
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("Loading Pokemon...")
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = result.error, result.data?.pages.isEmpty != false {
+                // Error state when no data is loaded
+                ErrorView(error: error) {
+                    Task {
+                        _ = try? await result.refetch()
                     }
-                    return nil // No more pages
-                },
-                initialPageParam: 0,
-                staleTime: 5 * 60 // 5 minutes before considered stale
-            ) { result in
-                if result.isLoading, result.data?.pages.isEmpty != false {
-                    // Initial loading state
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Loading Pokemon...")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = result.error, result.data?.pages.isEmpty != false {
-                    // Error state when no data is loaded
-                    ErrorView(error: error) {
-                        Task {
-                            _ = try? await result.refetch()
-                        }
-                    }
-                } else if let infiniteData = result.data {
-                    // Show the list with infinite scrolling
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            // Render all Pokemon from all pages
-                            ForEach(infiniteData.pages.indices, id: \.self) { pageIndex in
-                                let page = infiniteData.pages[pageIndex]
-                                ForEach(page.results) { pokemon in
-                                    NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.pokemonId)) {
-                                        PokemonListRow(pokemon: pokemon)
-                                            .padding(.horizontal)
-                                            .padding(.vertical, 8)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
+                }
+            } else if let infiniteData = result.data {
+                // Show the list with infinite scrolling
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        // Render all Pokemon from all pages
+                        ForEach(infiniteData.pages.indices, id: \.self) { pageIndex in
+                            let page = infiniteData.pages[pageIndex]
+                            ForEach(page.results) { pokemon in
+                                NavigationLink(destination: PokemonDetailView(pokemonId: pokemon.pokemonId)) {
+                                    PokemonListRow(pokemon: pokemon)
+                                        .padding(.horizontal)
+                                        .padding(.vertical, 8)
+                                }
+                                .buttonStyle(PlainButtonStyle())
 
-                                    // Add divider except for last item
-                                    if pokemon.id != page.results.last?.id || pageIndex != infiniteData.pages
-                                        .count - 1 {
-                                        Divider()
-                                            .padding(.horizontal)
-                                    }
+                                // Add divider except for last item
+                                if pokemon.id != page.results.last?.id || pageIndex != infiniteData.pages
+                                    .count - 1 {
+                                    Divider()
+                                        .padding(.horizontal)
                                 }
                             }
+                        }
 
-                            // Load more section
-                            if result.hasNextPage {
-                                VStack(spacing: 12) {
-                                    if result.isFetchingNextPage {
-                                        HStack(spacing: 8) {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                            Text("Loading more Pokemon...")
-                                                .foregroundColor(.secondary)
-                                                .font(.subheadline)
-                                        }
-                                        .padding()
-                                    } else {
-                                        Button("Load More Pokemon") {
-                                            Task {
-                                                _ = await result.fetchNextPage()
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .padding()
+                        // Load more section
+                        if result.hasNextPage {
+                            VStack(spacing: 12) {
+                                if result.isFetchingNextPage {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("Loading more Pokemon...")
+                                            .foregroundColor(.secondary)
+                                            .font(.subheadline)
                                     }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .onAppear {
-                                    // Auto-load when this view appears (infinite scrolling)
-                                    if !result.isFetchingNextPage {
+                                    .padding()
+                                } else {
+                                    Button("Load More Pokemon") {
                                         Task {
                                             _ = await result.fetchNextPage()
                                         }
                                     }
+                                    .buttonStyle(.bordered)
+                                    .padding()
                                 }
-                            } else {
-                                // End of list indicator
-                                VStack(spacing: 8) {
-                                    Text("🎉")
-                                        .font(.title)
-                                    Text("You've seen all available Pokemon!")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
                             }
+                            .frame(maxWidth: .infinity)
+                            .onAppear {
+                                // Auto-load when this view appears (infinite scrolling)
+                                if !result.isFetchingNextPage {
+                                    Task {
+                                        _ = await result.fetchNextPage()
+                                    }
+                                }
+                            }
+                        } else {
+                            // End of list indicator
+                            VStack(spacing: 8) {
+                                Text("🎉")
+                                    .font(.title)
+                                Text("You've seen all available Pokemon!")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
                         }
                     }
-                    .refreshable {
-                        _ = try? await result.refetch()
-                    }
-                } else {
-                    Text("No Pokemon found")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .refreshable {
+                    _ = try? await result.refetch()
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+            } else {
+                Text("No Pokemon found")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle("Pokemon")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Start at #\(initialOffset + 1)") {
-                        showOffsetPicker = true
-                    }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
+        }
+        .navigationTitle("Pokemon")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Start at #\(initialOffset + 1)") {
+                    showOffsetPicker = true
                 }
+                .font(.caption)
+                .buttonStyle(.bordered)
+            }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("🛠️") {
-                        showDevTools = true
-                    }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("🛠️") {
+                    showDevTools = true
                 }
             }
-            .sheet(isPresented: $showDevTools) {
-                DevToolsView()
-            }
-            .sheet(isPresented: $showOffsetPicker) {
-                OffsetPickerView(initialOffset: $initialOffset)
-            }
+        }
+        .sheet(isPresented: $showDevTools) {
+            DevToolsView()
+        }
+        .sheet(isPresented: $showOffsetPicker) {
+            OffsetPickerView(initialOffset: $initialOffset)
         }
     }
 }
@@ -271,64 +270,62 @@ struct PokemonListRow: View {
     let pokemon: PokemonList.PokemonListItem
 
     var body: some View {
-        WithPerceptionTracking {
-            HStack(spacing: 12) {
-                // Pokemon sprite using nested UseQuery
-                UseQuery(
-                    queryKey: "pokemon-sprite-\(pokemon.pokemonId)",
-                    queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemon.pokemonId) },
-                    staleTime: 15 * 60 // Sprites cached longer
-                ) { spriteResult in
-                    Group {
-                        if let pokemon = spriteResult.data,
-                           let spriteURL = pokemon.sprites.frontDefault,
-                           let url = URL(string: spriteURL) {
-                            AsyncImage(url: url) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                            } placeholder: {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.gray.opacity(0.3))
-                                    .overlay(
-                                        ProgressView()
-                                            .scaleEffect(0.5)
-                                    )
-                            }
-                            .frame(width: 60, height: 60)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                        } else {
+        HStack(spacing: 12) {
+            // Pokemon sprite using nested UseQuery
+            UseQuery(
+                queryKey: "pokemon-sprite-\(pokemon.pokemonId)",
+                queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemon.pokemonId) },
+                staleTime: 15 * 60 // Sprites cached longer
+            ) { spriteResult in
+                Group {
+                    if let pokemon = spriteResult.data,
+                       let spriteURL = pokemon.sprites.frontDefault,
+                       let url = URL(string: spriteURL) {
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        } placeholder: {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color.gray.opacity(0.3))
-                                .frame(width: 60, height: 60)
                                 .overlay(
-                                    Text("?")
-                                        .foregroundColor(.gray)
-                                        .font(.title2)
+                                    ProgressView()
+                                        .scaleEffect(0.5)
                                 )
                         }
+                        .frame(width: 60, height: 60)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                    } else {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 60, height: 60)
+                            .overlay(
+                                Text("?")
+                                    .foregroundColor(.gray)
+                                    .font(.title2)
+                            )
                     }
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(pokemon.name.capitalized)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-
-                    Text("#\(pokemon.pokemonId)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
             }
-            .padding(.vertical, 8)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(pokemon.name.capitalized)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text("#\(pokemon.pokemonId)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .foregroundColor(.secondary)
+                .font(.caption)
         }
+        .padding(.vertical, 8)
     }
 }
 
@@ -339,51 +336,50 @@ struct PokemonDetailView: View {
     @State private var showDevTools = false
 
     var body: some View {
-        WithPerceptionTracking {
-            UseQuery(
-                queryKey: "pokemon-\(pokemonId)",
-                queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemonId) },
-                staleTime: 10 * 60 // 10 minutes,
-            ) { result in
-                ScrollView {
-                    if result.isLoading {
-                        VStack(spacing: 20) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-                            Text("Loading Pokemon details...")
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 400)
-                        .padding()
-                    } else if let error = result.error {
-                        ErrorView(error: error) {
-                            Task {
-                                _ = try? await result.refetch()
-                            }
-                        }
-                    } else if let pokemon = result.data {
-                        PokemonDetailContent(pokemon: pokemon)
-                    } else {
-                        Text("Pokemon not found")
+        UseQuery(
+            queryKey: "pokemon-\(pokemonId)",
+            queryFn: { _ in try await PokemonAPI.fetchPokemon(id: pokemonId) },
+            staleTime: 10 * 60 // 10 minutes,
+        ) { result in
+            ScrollView {
+                if result.isLoading {
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading Pokemon details...")
                             .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 400)
                     }
-                }
-                .navigationTitle(result.data?.name.capitalized ?? "Pokemon")
-                .navigationBarTitleDisplayMode(.large)
-                .refreshable {
-                    _ = try? await result.refetch()
-                }
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("🛠️") {
-                            showDevTools = true
+                    .frame(maxWidth: .infinity, minHeight: 400)
+                    .padding()
+                } else if let error = result.error {
+                    ErrorView(error: error) {
+                        Task {
+                            _ = try? await result.refetch()
                         }
                     }
+                } else if let pokemon = result.data {
+                    PokemonDetailContent(pokemon: pokemon)
+                } else {
+                    Text("Pokemon not found")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 400)
                 }
-                .sheet(isPresented: $showDevTools) {
-                    DevToolsView()
+            }
+            .refreshable {
+                _ = try? await result.refetch()
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+            .navigationTitle(result.data?.name.capitalized ?? "Pokemon")
+//            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("🛠️") {
+                        showDevTools = true
+                    }
                 }
+            }
+            .sheet(isPresented: $showDevTools) {
+                DevToolsView()
             }
         }
     }
@@ -531,156 +527,154 @@ struct PokemonSearchView: View {
     @State private var showDevTools = false
 
     var body: some View {
-        WithPerceptionTracking {
-            VStack(spacing: 0) {
-                // Search Bar
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField("Search Pokemon name or ID...", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onChange(of: searchText) { newValue in
-                            throttledSearch(newValue)
+        VStack(spacing: 0) {
+            // Search Bar
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Search Pokemon name or ID...", text: $searchText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onChange(of: searchText) { newValue in
+                        throttledSearch(newValue)
+                    }
+
+                Text("Search automatically as you type")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
+            }
+            .padding()
+
+            // Search Results
+            if !searchKey.isEmpty {
+                UseQuery(
+                    queryKey: "pokemon-search-\(searchKey)",
+                    queryFn: { _ in try await PokemonAPI.searchPokemon(name: searchKey) },
+                    staleTime: 5, // 5 seconds for demo purposes - easier to see stale status
+                    enabled: !searchKey.isEmpty
+                ) { result in
+                    if result.isLoading, result.error == nil {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                            Text("Searching for \(searchKey)...")
+                                .foregroundColor(.secondary)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let queryError = result.error {
+                        if !queryError.isNetworkError {
+                            // Pokemon not found (API error)
+                            VStack(spacing: 20) {
+                                Image(systemName: "questionmark.circle")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.orange)
 
-                    Text("Search automatically as you type")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 4)
-                }
-                .padding()
+                                Text("Pokemon Not Found")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
 
-                // Search Results
-                if !searchKey.isEmpty {
-                    UseQuery(
-                        queryKey: "pokemon-search-\(searchKey)",
-                        queryFn: { _ in try await PokemonAPI.searchPokemon(name: searchKey) },
-                        staleTime: 5, // 5 seconds for demo purposes - easier to see stale status
-                        enabled: !searchKey.isEmpty
-                    ) { result in
-                        if result.isLoading, result.error == nil {
-                            VStack(spacing: 16) {
-                                ProgressView()
-                                Text("Searching for \(searchKey)...")
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if let queryError = result.error {
-                            if !queryError.isNetworkError {
-                                // Pokemon not found (API error)
-                                VStack(spacing: 20) {
-                                    Image(systemName: "questionmark.circle")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.orange)
-
-                                    Text("Pokemon Not Found")
-                                        .font(.title2)
-                                        .fontWeight(.medium)
-
-                                    Text("No Pokemon named '\(searchKey)' exists. Try a different name or ID.")
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
-                                }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .padding()
-                            } else {
-                                // Network connection error
-                                VStack(spacing: 20) {
-                                    Image(systemName: "wifi.exclamationmark")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.red)
-
-                                    Text("Connection Error")
-                                        .font(.title2)
-                                        .fontWeight(.medium)
-
-                                    Text(
-                                        "Unable to search for Pokemon. " +
-                                            "Please check your internet connection and try again."
-                                    )
+                                Text("No Pokemon named '\(searchKey)' exists. Try a different name or ID.")
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
-
-                                    Button("Try Again") {
-                                        Task {
-                                            _ = try? await result.refetch()
-                                        }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .padding()
                             }
-                        } else if let pokemon = result.data {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 16) {
-                                    // Stale status indicator
-                                    HStack {
-                                        Circle()
-                                            .fill(result.isStale ? Color.orange : Color.green)
-                                            .frame(width: 8, height: 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                        } else {
+                            // Network connection error
+                            VStack(spacing: 20) {
+                                Image(systemName: "wifi.exclamationmark")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.red)
 
-                                        Text(result.isStale ? "Data is stale" : "Data is fresh")
-                                            .font(.caption)
-                                            .foregroundColor(result.isStale ? .orange : .green)
+                                Text("Connection Error")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
 
-                                        Spacer()
+                                Text(
+                                    "Unable to search for Pokemon. " +
+                                        "Please check your internet connection and try again."
+                                )
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
 
-                                        if result.isStale {
-                                            Button("Refresh") {
-                                                Task {
-                                                    _ = try? await result.refetch()
-                                                }
-                                            }
-                                            .font(.caption)
-                                            .buttonStyle(.bordered)
-                                        }
-
-                                        Text("Last updated: \(formatLastUpdated(result.dataUpdatedAt))")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                Button("Try Again") {
+                                    Task {
+                                        _ = try? await result.refetch()
                                     }
-                                    .padding(.horizontal)
-                                    .padding(.top)
-
-                                    PokemonDetailContent(pokemon: pokemon)
                                 }
+                                .buttonStyle(.borderedProminent)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding()
+                        }
+                    } else if let pokemon = result.data {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                // Stale status indicator
+                                HStack {
+                                    Circle()
+                                        .fill(result.isStale ? Color.orange : Color.green)
+                                        .frame(width: 8, height: 8)
+
+                                    Text(result.isStale ? "Data is stale" : "Data is fresh")
+                                        .font(.caption)
+                                        .foregroundColor(result.isStale ? .orange : .green)
+
+                                    Spacer()
+
+                                    if result.isStale {
+                                        Button("Refresh") {
+                                            Task {
+                                                _ = try? await result.refetch()
+                                            }
+                                        }
+                                        .font(.caption)
+                                        .buttonStyle(.bordered)
+                                    }
+
+                                    Text("Last updated: \(formatLastUpdated(result.dataUpdatedAt))")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal)
+                                .padding(.top)
+
+                                PokemonDetailContent(pokemon: pokemon)
                             }
                         }
                     }
-                } else {
-                    VStack(spacing: 20) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                }
+            } else {
+                VStack(spacing: 20) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
 
-                        Text("Search for Pokemon")
-                            .font(.title2)
-                            .fontWeight(.medium)
+                    Text("Search for Pokemon")
+                        .font(.title2)
+                        .fontWeight(.medium)
 
-                        Text(
-                            "Start typing a Pokemon name (like 'pikachu') or ID number. " +
-                                "Search will start automatically after 2+ characters."
-                        )
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
+                    Text(
+                        "Start typing a Pokemon name (like 'pikachu') or ID number. " +
+                            "Search will start automatically after 2+ characters."
+                    )
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            }
+        }
+        .navigationTitle("Search Pokemon")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("🛠️") {
+                    showDevTools = true
                 }
             }
-            .navigationTitle("Search Pokemon")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("🛠️") {
-                        showDevTools = true
-                    }
-                }
-            }
-            .sheet(isPresented: $showDevTools) {
-                DevToolsView()
-            }
+        }
+        .sheet(isPresented: $showDevTools) {
+            DevToolsView()
         }
         .onDisappear {
             // Cancel any pending search task when view disappears

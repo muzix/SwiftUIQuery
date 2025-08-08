@@ -23,7 +23,7 @@ struct InitialDataDemoView: View {
         height: 7,
         weight: 69,
         sprites: Pokemon
-            .Sprites(frontDefault: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png"),
+            .Sprites(frontDefault: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"),
         types: [
             Pokemon.PokemonType(type: Pokemon.PokemonType.TypeInfo(name: "grass")),
             Pokemon.PokemonType(type: Pokemon.PokemonType.TypeInfo(name: "poison"))
@@ -39,166 +39,164 @@ struct InitialDataDemoView: View {
     )
 
     var body: some View {
-        WithPerceptionTracking {
-            VStack(spacing: 0) {
-                // Demo Controls
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Initial Data Demo")
-                        .font(.title2)
-                        .fontWeight(.bold)
+        VStack(spacing: 0) {
+            // Demo Controls
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Initial Data Demo")
+                    .font(.title2)
+                    .fontWeight(.bold)
 
-                    Text("This demo shows how UseQuery handles initial data to prevent loading states.")
-                        .font(.subheadline)
+                Text("This demo shows how UseQuery handles initial data to prevent loading states.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Pokemon ID:")
+                            .fontWeight(.medium)
+
+                        Picker("Pokemon ID", selection: $selectedPokemonId) {
+                            Text("1 (Bulbasaur)").tag(1)
+                            Text("4 (Charmander)").tag(4)
+                            Text("7 (Squirtle)").tag(7)
+                            Text("25 (Pikachu)").tag(25)
+                            Text("150 (Mewtwo)").tag(150)
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                    }
+
+                    Toggle("Show Quick Access Panel", isOn: $showQuickAccess)
+                        .toggleStyle(SwitchToggleStyle())
+                }
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+
+            Divider()
+
+            // Quick Access Panel (optional)
+            if showQuickAccess {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Quick Access")
+                        .font(.headline)
+                        .fontWeight(.medium)
+
+                    Text("These buttons demonstrate instant data access when initial data is provided.")
+                        .font(.caption)
                         .foregroundColor(.secondary)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Pokemon ID:")
-                                .fontWeight(.medium)
-
-                            Picker("Pokemon ID", selection: $selectedPokemonId) {
-                                Text("1 (Bulbasaur)").tag(1)
-                                Text("4 (Charmander)").tag(4)
-                                Text("7 (Squirtle)").tag(7)
-                                Text("25 (Pikachu)").tag(25)
-                                Text("150 (Mewtwo)").tag(150)
-                            }
-                            .pickerStyle(MenuPickerStyle())
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            QuickAccessButton(
+                                pokemonId: 1,
+                                name: "Bulbasaur",
+                                initialData: initialPokemonData,
+                                selectedId: $selectedPokemonId
+                            )
+                            QuickAccessButton(
+                                pokemonId: 4,
+                                name: "Charmander",
+                                initialData: nil,
+                                selectedId: $selectedPokemonId
+                            )
+                            QuickAccessButton(
+                                pokemonId: 7,
+                                name: "Squirtle",
+                                initialData: nil,
+                                selectedId: $selectedPokemonId
+                            )
+                            QuickAccessButton(
+                                pokemonId: 25,
+                                name: "Pikachu",
+                                initialData: nil,
+                                selectedId: $selectedPokemonId
+                            )
+                            QuickAccessButton(
+                                pokemonId: 150,
+                                name: "Mewtwo",
+                                initialData: nil,
+                                selectedId: $selectedPokemonId
+                            )
                         }
-
-                        Toggle("Show Quick Access Panel", isOn: $showQuickAccess)
-                            .toggleStyle(SwitchToggleStyle())
+                        .padding(.horizontal)
                     }
                 }
                 .padding()
-                .background(Color(.systemGroupedBackground))
+                .background(Color(.tertiarySystemGroupedBackground))
 
                 Divider()
+            }
 
-                // Quick Access Panel (optional)
-                if showQuickAccess {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Quick Access")
-                            .font(.headline)
-                            .fontWeight(.medium)
+            // Main Pokemon Display with Initial Data
+            UseQuery(
+                queryKey: "pokemon-initial-\(selectedPokemonId)",
+                queryFn: { _ in try await PokemonAPI.fetchPokemon(id: selectedPokemonId) },
+                staleTime: 30, // 30 seconds for demo - shows stale vs fresh states
+                enabled: true,
+                initialData: selectedPokemonId == 1 ? initialPokemonData : nil
+            ) { result in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Status Indicators
+                        StatusIndicatorSection(result: result, pokemonId: selectedPokemonId)
 
-                        Text("These buttons demonstrate instant data access when initial data is provided.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                QuickAccessButton(
-                                    pokemonId: 1,
-                                    name: "Bulbasaur",
-                                    initialData: initialPokemonData,
-                                    selectedId: $selectedPokemonId
-                                )
-                                QuickAccessButton(
-                                    pokemonId: 4,
-                                    name: "Charmander",
-                                    initialData: nil,
-                                    selectedId: $selectedPokemonId
-                                )
-                                QuickAccessButton(
-                                    pokemonId: 7,
-                                    name: "Squirtle",
-                                    initialData: nil,
-                                    selectedId: $selectedPokemonId
-                                )
-                                QuickAccessButton(
-                                    pokemonId: 25,
-                                    name: "Pikachu",
-                                    initialData: nil,
-                                    selectedId: $selectedPokemonId
-                                )
-                                QuickAccessButton(
-                                    pokemonId: 150,
-                                    name: "Mewtwo",
-                                    initialData: nil,
-                                    selectedId: $selectedPokemonId
-                                )
+                        // Pokemon Content
+                        if result.isLoading, result.data == nil {
+                            // True loading state (no initial data)
+                            LoadingView(message: "Loading Pokemon data...")
+                        } else if let error = result.error, result.data == nil {
+                            // Error state with no fallback data
+                            ErrorView(error: error) {
+                                Task {
+                                    _ = try? await result.refetch()
+                                }
                             }
-                            .padding(.horizontal)
+                        } else if let pokemon = result.data {
+                            // Success state (with data - could be initial, cached, or fresh)
+                            VStack(spacing: 16) {
+                                // Data source indicator
+                                DataSourceIndicator(
+                                    result: result,
+                                    pokemon: pokemon,
+                                    initialData: selectedPokemonId == 1 ? initialPokemonData : nil
+                                )
+
+                                // Pokemon details
+                                PokemonDetailContent(pokemon: pokemon)
+
+                                // Background refetch indicator
+                                if result.isFetching, result.data != nil {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                        Text("Refreshing data in background...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding()
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(8)
+                                }
+                            }
+                        } else {
+                            // No data state
+                            VStack(spacing: 16) {
+                                Image(systemName: "questionmark.circle")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.gray)
+
+                                Text("No Pokemon Data")
+                                    .font(.title2)
+                                    .fontWeight(.medium)
+
+                                Text("No data available for Pokemon #\(selectedPokemonId)")
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 200)
                         }
                     }
                     .padding()
-                    .background(Color(.tertiarySystemGroupedBackground))
-
-                    Divider()
-                }
-
-                // Main Pokemon Display with Initial Data
-                UseQuery(
-                    queryKey: "pokemon-initial-\(selectedPokemonId)",
-                    queryFn: { _ in try await PokemonAPI.fetchPokemon(id: selectedPokemonId) },
-                    staleTime: 30, // 30 seconds for demo - shows stale vs fresh states
-                    enabled: true,
-                    initialData: selectedPokemonId == 1 ? initialPokemonData : nil
-                ) { result in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Status Indicators
-                            StatusIndicatorSection(result: result, pokemonId: selectedPokemonId)
-
-                            // Pokemon Content
-                            if result.isLoading, result.data == nil {
-                                // True loading state (no initial data)
-                                LoadingView(message: "Loading Pokemon data...")
-                            } else if let error = result.error, result.data == nil {
-                                // Error state with no fallback data
-                                ErrorView(error: error) {
-                                    Task {
-                                        _ = try? await result.refetch()
-                                    }
-                                }
-                            } else if let pokemon = result.data {
-                                // Success state (with data - could be initial, cached, or fresh)
-                                VStack(spacing: 16) {
-                                    // Data source indicator
-                                    DataSourceIndicator(
-                                        result: result,
-                                        pokemon: pokemon,
-                                        initialData: selectedPokemonId == 1 ? initialPokemonData : nil
-                                    )
-
-                                    // Pokemon details
-                                    PokemonDetailContent(pokemon: pokemon)
-
-                                    // Background refetch indicator
-                                    if result.isFetching, result.data != nil {
-                                        HStack(spacing: 8) {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                            Text("Refreshing data in background...")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .padding()
-                                        .background(Color.blue.opacity(0.1))
-                                        .cornerRadius(8)
-                                    }
-                                }
-                            } else {
-                                // No data state
-                                VStack(spacing: 16) {
-                                    Image(systemName: "questionmark.circle")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.gray)
-
-                                    Text("No Pokemon Data")
-                                        .font(.title2)
-                                        .fontWeight(.medium)
-
-                                    Text("No data available for Pokemon #\(selectedPokemonId)")
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 200)
-                            }
-                        }
-                        .padding()
-                    }
                 }
             }
         }

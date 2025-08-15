@@ -183,8 +183,14 @@ public struct UseInfiniteQuery<
     ///   - getPreviousPageParam: Function to determine the previous page parameter
     ///   - initialPageParam: Initial page parameter for the first page
     ///   - maxPages: Maximum number of pages to retain
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the infinite query result
@@ -195,8 +201,14 @@ public struct UseInfiniteQuery<
         getPreviousPageParam: GetPreviousPageParamFunction<TData, TPageParam>? = nil,
         initialPageParam: TPageParam? = nil,
         maxPages: Int? = nil,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseInfiniteQueryResult<TData, TPageParam>) -> Content
@@ -208,14 +220,14 @@ public struct UseInfiniteQuery<
             getPreviousPageParam: getPreviousPageParam,
             initialPageParam: initialPageParam,
             maxPages: maxPages,
-            retryConfig: RetryConfig(),
-            networkMode: NetworkMode.online,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
             staleTime: staleTime,
             gcTime: gcTime,
-            refetchTriggers: RefetchTriggers.default,
-            refetchOnAppear: RefetchOnAppear.ifStale,
-            structuralSharing: true,
-            meta: nil as QueryMeta?,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            structuralSharing: structuralSharing,
+            meta: meta,
             enabled: enabled
         )
 
@@ -292,26 +304,65 @@ public struct UseInfiniteQuery<
 
 /// Additional convenience methods for SwiftUI integration
 extension UseInfiniteQuery {
-    /// Create a UseInfiniteQuery with simple parameters for common use cases
+    /// Create a UseInfiniteQuery with string-based query key
     /// - Parameters:
     ///   - queryKey: String-based query key
     ///   - queryFn: Function that fetches page data
     ///   - getNextPageParam: Function to get next page parameter from pages
+    ///   - getPreviousPageParam: Function to determine the previous page parameter
+    ///   - initialPageParam: Initial page parameter for the first page
+    ///   - maxPages: Maximum number of pages to retain
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
+    ///   - staleTime: Time before data is considered stale (default: 0)
+    ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
+    ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
         queryKey: String,
         queryFn: @escaping @Sendable (String, TPageParam?) async throws -> TData,
         getNextPageParam: @escaping GetNextPageParamFunction<TData, TPageParam>,
+        getPreviousPageParam: GetPreviousPageParamFunction<TData, TPageParam>? = nil,
+        initialPageParam: TPageParam? = nil,
+        maxPages: Int? = nil,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true,
+        queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseInfiniteQueryResult<TData, TPageParam>) -> Content
     ) where TKey == String {
         let options = InfiniteQueryOptions<TData, QueryError, String, TPageParam>(
             queryKey: queryKey,
             queryFn: queryFn,
-            getNextPageParam: getNextPageParam
+            getNextPageParam: getNextPageParam,
+            getPreviousPageParam: getPreviousPageParam,
+            initialPageParam: initialPageParam,
+            maxPages: maxPages,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
         )
 
         self.init(
             options: options,
+            queryClient: queryClient,
             content: content
         )
     }

@@ -528,6 +528,9 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
 
     /// Internal fetch implementation that executes the query function
     public func internalFetch() async throws -> TData {
+        // Store current state to revert if fetch is cancelled
+        revertState = state
+
         // Cancel any existing fetch
         fetchTask?.cancel()
 
@@ -547,6 +550,9 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
 
                 // Update state with success
                 dispatch(.success(data: data, dataUpdatedAt: nil, manual: false))
+
+                // Clear revertState on successful fetch (no longer needed)
+                self.revertState = nil
 
                 // Clear the fetch task
                 self.fetchTask = nil

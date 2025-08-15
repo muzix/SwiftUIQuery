@@ -659,6 +659,9 @@ public final class InfiniteQuery<
                 // Update state with the new data (replacing old data)
                 dispatch(.success(data: newData, dataUpdatedAt: nil, manual: false))
 
+                // Clear revertState on successful fetch (no longer needed)
+                self.revertState = nil
+
                 // Clear the fetch task and direction
                 self.fetchTask = nil
                 self.currentFetchDirection = nil

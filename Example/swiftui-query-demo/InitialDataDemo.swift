@@ -132,8 +132,8 @@ struct InitialDataDemoView: View {
                 queryKey: "pokemon-initial-\(selectedPokemonId)",
                 queryFn: { _ in try await PokemonAPI.fetchPokemon(id: selectedPokemonId) },
                 staleTime: 30, // 30 seconds for demo - shows stale vs fresh states
-                enabled: true,
-                initialData: selectedPokemonId == 1 ? initialPokemonData : nil
+                initialData: selectedPokemonId == 1 ? initialPokemonData : nil,
+                enabled: true
             ) { result in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {

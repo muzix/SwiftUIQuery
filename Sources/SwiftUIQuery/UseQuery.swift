@@ -97,35 +97,49 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
     /// - Parameters:
     ///   - queryKey: Unique identifier for the query
     ///   - queryFn: Function that fetches the data
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
-    ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
+    ///   - initialDataFunction: Function to provide initial data
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
+    ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
         queryKey: TKey,
         queryFn: @escaping @Sendable (TKey) async throws -> TData,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = defaultGcTime,
-        enabled: Bool = true,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) {
         let options = QueryOptions<TData, TKey>(
             queryKey: queryKey,
             queryFn: queryFn,
-            retryConfig: RetryConfig(),
-            networkMode: NetworkMode.online,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
             staleTime: staleTime,
             gcTime: gcTime,
-            refetchTriggers: RefetchTriggers.default,
-            refetchOnAppear: RefetchOnAppear.ifStale,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
             initialData: initialData,
-            initialDataFunction: nil as InitialDataFunction<TData>?,
-            structuralSharing: true,
-            meta: nil as QueryMeta?,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
             enabled: enabled
         )
 
@@ -181,35 +195,49 @@ extension UseQuery {
     /// - Parameters:
     ///   - queryKey: String identifier for the query
     ///   - queryFn: Function that fetches the data
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
-    ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
+    ///   - initialDataFunction: Function to provide initial data
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
+    ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
         queryKey: String,
         queryFn: @escaping @Sendable (String) async throws -> TData,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = defaultGcTime,
-        enabled: Bool = true,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) where TKey == String {
         let options = QueryOptions<TData, String>(
             queryKey: queryKey,
             queryFn: queryFn,
-            retryConfig: RetryConfig(),
-            networkMode: NetworkMode.online,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
             staleTime: staleTime,
             gcTime: gcTime,
-            refetchTriggers: RefetchTriggers.default,
-            refetchOnAppear: RefetchOnAppear.ifStale,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
             initialData: initialData,
-            initialDataFunction: nil as InitialDataFunction<TData>?,
-            structuralSharing: true,
-            meta: nil as QueryMeta?,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
             enabled: enabled
         )
 
@@ -225,35 +253,49 @@ extension UseQuery {
     /// - Parameters:
     ///   - queryKey: Array identifier for the query
     ///   - queryFn: Function that fetches the data
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
     ///   - staleTime: Time before data is considered stale (default: 0)
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
-    ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
+    ///   - initialDataFunction: Function to provide initial data
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
+    ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
     public init(
         queryKey: [String],
         queryFn: @escaping @Sendable ([String]) async throws -> TData,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
         gcTime: TimeInterval = defaultGcTime,
-        enabled: Bool = true,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
     ) where TKey == [String] {
         let options = QueryOptions<TData, [String]>(
             queryKey: queryKey,
             queryFn: queryFn,
-            retryConfig: RetryConfig(),
-            networkMode: NetworkMode.online,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
             staleTime: staleTime,
             gcTime: gcTime,
-            refetchTriggers: RefetchTriggers.default,
-            refetchOnAppear: RefetchOnAppear.ifStale,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
             initialData: initialData,
-            initialDataFunction: nil as InitialDataFunction<TData>?,
-            structuralSharing: true,
-            meta: nil as QueryMeta?,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
             enabled: enabled
         )
 

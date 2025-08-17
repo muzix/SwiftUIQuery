@@ -6,7 +6,7 @@ let package = Package(
     name: "SwiftUIQuery",
     platforms: [
         .iOS(.v16),
-        .macOS(.v13),
+        .macOS(.v12),
         .tvOS(.v16),
         .watchOS(.v9)
     ],

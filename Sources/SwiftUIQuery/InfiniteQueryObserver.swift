@@ -286,8 +286,6 @@ public final class InfiniteQueryObserver<
                 // Error will be reflected in the updated state
             }
 
-            // Update result and return it
-            updateResult()
             return result
         }
     }
@@ -304,8 +302,6 @@ public final class InfiniteQueryObserver<
                 // Error will be reflected in the updated state
             }
 
-            // Update result and return it
-            updateResult()
             return result
         }
     }

@@ -86,3 +86,70 @@ public struct KeyTuple4<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCo
         self.key4 = key4
     }
 }
+
+public struct KeyTuple5<
+    K1: QueryKeyCodable,
+    K2: QueryKeyCodable,
+    K3: QueryKeyCodable,
+    K4: QueryKeyCodable,
+    K5: QueryKeyCodable
+>: QueryKey,
+    QueryKeyCodable {
+    public let key1: K1
+    public let key2: K2
+    public let key3: K3
+    public let key4: K4
+    public let key5: K5
+
+    public init(_ key1: K1, _ key2: K2, _ key3: K3, _ key4: K4, _ key5: K5) {
+        self.key1 = key1
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
+        self.key5 = key5
+    }
+
+    public init(_ key1: (some Any).Type, _ key2: K2, _ key3: K3, _ key4: K4, _ key5: K5) where K1 == String {
+        self.key1 = String(describing: key1)
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
+        self.key5 = key5
+    }
+}
+
+public struct KeyTuple6<
+    K1: QueryKeyCodable,
+    K2: QueryKeyCodable,
+    K3: QueryKeyCodable,
+    K4: QueryKeyCodable,
+    K5: QueryKeyCodable,
+    K6: QueryKeyCodable
+>: QueryKey,
+    QueryKeyCodable {
+    public let key1: K1
+    public let key2: K2
+    public let key3: K3
+    public let key4: K4
+    public let key5: K5
+    public let key6: K6
+
+    public init(_ key1: K1, _ key2: K2, _ key3: K3, _ key4: K4, _ key5: K5, _ key6: K6) {
+        self.key1 = key1
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
+        self.key5 = key5
+        self.key6 = key6
+    }
+
+    public init(_ key1: (some Any).Type, _ key2: K2, _ key3: K3, _ key4: K4, _ key5: K5, _ key6: K6)
+        where K1 == String {
+        self.key1 = String(describing: key1)
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
+        self.key5 = key5
+        self.key6 = key6
+    }
+}

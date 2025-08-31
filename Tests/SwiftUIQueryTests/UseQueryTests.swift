@@ -66,6 +66,25 @@ struct UseQueryTests {
         #expect(useQuery.testObserver.options.enabled == true)
     }
 
+    @Test("UseQuery initializes with Dictionary initializer")
+    func initializeWithDictionaryKey() {
+        let queryKey: [String: String] = ["type": "user", "id": "123", "status": "active"]
+
+        let useQuery = UseQuery(
+            queryKey: queryKey,
+            queryFn: { (key: [String: String]) in
+                TestUser(id: key["id"] ?? "", name: "User \(key["id"] ?? "")")
+            }
+        ) { result in
+            Text("User: \(result.data?.name ?? "Loading")")
+        }
+
+        #expect(useQuery.testObserver.options.queryKey == queryKey)
+        #expect(useQuery.testObserver.options.staleTime == 0)
+        #expect(useQuery.testObserver.options.gcTime == defaultGcTime)
+        #expect(useQuery.testObserver.options.enabled == true)
+    }
+
     @Test("UseQuery initializes with custom parameters")
     func initializeWithCustomParameters() {
         let useQuery = UseQuery(
@@ -165,14 +184,42 @@ struct UseQueryTests {
     @Test("Array QueryKey extension works")
     func arrayQueryKeyExtension() {
         let key = ["posts", "user-123"]
-        #expect(key.queryHash == "posts|user-123")
+        // Arrays use JSON encoding for queryHash
+        #expect(key.queryHash == "[\"posts\",\"user-123\"]")
     }
 
-    @Test("Array QueryKey extension sorts consistently")
-    func arrayQueryKeySorting() {
+    @Test("Array QueryKey extension generates unique hashes")
+    func arrayQueryKeyUniqueness() {
         let key1 = ["user-123", "posts"]
         let key2 = ["posts", "user-123"]
+        // Different order means different hash
+        #expect(key1.queryHash != key2.queryHash)
+
+        let key3 = ["posts", "user-456"]
+        let key4 = ["posts", "user-123"]
+        // Different values mean different hash
+        #expect(key3.queryHash != key4.queryHash)
+    }
+
+    @Test("Dictionary QueryKey extension works")
+    func dictionaryQueryKeyExtension() {
+        let key: [String: String] = ["type": "user", "id": "123"]
+        // Dictionaries use JSON encoding with sorted keys for queryHash
+        let expectedHash = "{\"id\":\"123\",\"type\":\"user\"}"
+        #expect(key.queryHash == expectedHash)
+    }
+
+    @Test("Dictionary QueryKey generates consistent hashes")
+    func dictionaryQueryKeyConsistency() {
+        let key1: [String: String] = ["type": "post", "id": "456", "status": "published"]
+        let key2: [String: String] = ["status": "published", "type": "post", "id": "456"]
+        // Same keys and values in different order should produce same hash (sorted keys)
         #expect(key1.queryHash == key2.queryHash)
+
+        let key3: [String: String] = ["type": "post", "id": "789"]
+        let key4: [String: String] = ["type": "post", "id": "456"]
+        // Different values should produce different hashes
+        #expect(key3.queryHash != key4.queryHash)
     }
 
     // MARK: - Environment Support Tests

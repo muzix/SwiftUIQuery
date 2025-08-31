@@ -87,7 +87,7 @@ struct QueryLoggerTests {
         let client = QueryClient()
 
         // Test cache operations with logging enabled
-        let queryKey = ArrayQueryKey("test", "user")
+        let queryKey = ["test", "user"]
         let testData = TestUser(id: "123", name: "Test User", email: "test@example.com")
 
         // This should trigger cache miss -> cache hit logging

@@ -191,9 +191,9 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
 // MARK: - Convenience Extensions
 
 extension UseQuery {
-    /// Create UseQuery with string-based query key
+    /// Create UseQuery with KeyTuple2-based query key
     /// - Parameters:
-    ///   - queryKey: String identifier for the query
+    ///   - queryKey: KeyTuple2 identifier for the query
     ///   - queryFn: Function that fetches the data
     ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
     ///   - networkMode: Network behavior configuration (default: .online)
@@ -208,9 +208,9 @@ extension UseQuery {
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
-    public init(
-        queryKey: String,
-        queryFn: @escaping @Sendable (String) async throws -> TData,
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable>(
+        queryKey: KeyTuple2<K1, K2>,
+        queryFn: @escaping @Sendable (KeyTuple2<K1, K2>) async throws -> TData,
         retryConfig: RetryConfig = RetryConfig(),
         networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
@@ -224,8 +224,8 @@ extension UseQuery {
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
-    ) where TKey == String {
-        let options = QueryOptions<TData, String>(
+    ) where TKey == KeyTuple2<K1, K2> {
+        let options = QueryOptions<TData, KeyTuple2<K1, K2>>(
             queryKey: queryKey,
             queryFn: queryFn,
             retryConfig: retryConfig,
@@ -249,9 +249,9 @@ extension UseQuery {
         self.content = content
     }
 
-    /// Create UseQuery with array-based query key
+    /// Create UseQuery with KeyTuple3-based query key
     /// - Parameters:
-    ///   - queryKey: Array identifier for the query
+    ///   - queryKey: KeyTuple3 identifier for the query
     ///   - queryFn: Function that fetches the data
     ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
     ///   - networkMode: Network behavior configuration (default: .online)
@@ -266,9 +266,9 @@ extension UseQuery {
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
     ///   - content: View builder that receives the query result
-    public init(
-        queryKey: [String],
-        queryFn: @escaping @Sendable ([String]) async throws -> TData,
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable>(
+        queryKey: KeyTuple3<K1, K2, K3>,
+        queryFn: @escaping @Sendable (KeyTuple3<K1, K2, K3>) async throws -> TData,
         retryConfig: RetryConfig = RetryConfig(),
         networkMode: NetworkMode = .online,
         staleTime: TimeInterval = 0,
@@ -282,8 +282,66 @@ extension UseQuery {
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
         @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
-    ) where TKey == [String] {
-        let options = QueryOptions<TData, [String]>(
+    ) where TKey == KeyTuple3<K1, K2, K3> {
+        let options = QueryOptions<TData, KeyTuple3<K1, K2, K3>>(
+            queryKey: queryKey,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            initialData: initialData,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
+        )
+
+        // Store options and client for later use
+        self.options = options
+        self.queryClient = queryClient
+        let client = queryClient ?? QueryClientProvider.shared.queryClient
+        self._observer = StateObject(wrappedValue: QueryObserver(client: client, options: options))
+        self.content = content
+    }
+
+    /// Create UseQuery with KeyTuple4-based query key
+    /// - Parameters:
+    ///   - queryKey: KeyTuple4 identifier for the query
+    ///   - queryFn: Function that fetches the data
+    ///   - retryConfig: Configuration for retry behavior (default: RetryConfig())
+    ///   - networkMode: Network behavior configuration (default: .online)
+    ///   - staleTime: Time before data is considered stale (default: 0)
+    ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
+    ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
+    ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
+    ///   - initialData: Initial data to show while the query loads
+    ///   - initialDataFunction: Function to provide initial data
+    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
+    ///   - meta: Arbitrary metadata for this query
+    ///   - enabled: Whether the query should execute automatically (default: true)
+    ///   - queryClient: Optional query client (uses shared instance if nil)
+    ///   - content: View builder that receives the query result
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable, K4: QueryKeyCodable>(
+        queryKey: KeyTuple4<K1, K2, K3, K4>,
+        queryFn: @escaping @Sendable (KeyTuple4<K1, K2, K3, K4>) async throws -> TData,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .ifStale,
+        initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true,
+        queryClient: QueryClient? = nil,
+        @ViewBuilder content: @escaping (UseQueryResult<TData>) -> Content
+    ) where TKey == KeyTuple4<K1, K2, K3, K4> {
+        let options = QueryOptions<TData, KeyTuple4<K1, K2, K3, K4>>(
             queryKey: queryKey,
             queryFn: queryFn,
             retryConfig: retryConfig,

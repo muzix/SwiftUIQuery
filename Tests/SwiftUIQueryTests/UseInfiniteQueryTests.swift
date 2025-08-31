@@ -697,7 +697,7 @@ struct InfiniteQueryTests {
         // After refetch, new data should be present
         #expect(refetchedData.pages.count == 1)
         #expect(infiniteQuery.state.data?.pages.count == 1)
-        #expect(await fetchCounter.count == 2) // Verify fetch was called twice
+        #expect(fetchCounter.count == 2) // Verify fetch was called twice
     }
 }
 

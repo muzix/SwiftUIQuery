@@ -165,14 +165,21 @@ struct UseQueryTests {
     @Test("Array QueryKey extension works")
     func arrayQueryKeyExtension() {
         let key = ["posts", "user-123"]
-        #expect(key.queryHash == "posts|user-123")
+        // Arrays use JSON encoding for queryHash
+        #expect(key.queryHash == "[\"posts\",\"user-123\"]")
     }
 
-    @Test("Array QueryKey extension sorts consistently")
-    func arrayQueryKeySorting() {
+    @Test("Array QueryKey extension generates unique hashes")
+    func arrayQueryKeyUniqueness() {
         let key1 = ["user-123", "posts"]
         let key2 = ["posts", "user-123"]
-        #expect(key1.queryHash == key2.queryHash)
+        // Different order means different hash
+        #expect(key1.queryHash != key2.queryHash)
+
+        let key3 = ["posts", "user-456"]
+        let key4 = ["posts", "user-123"]
+        // Different values mean different hash
+        #expect(key3.queryHash != key4.queryHash)
     }
 
     // MARK: - Environment Support Tests

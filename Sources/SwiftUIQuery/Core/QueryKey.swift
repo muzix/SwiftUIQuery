@@ -4,47 +4,19 @@ import Foundation
 
 /// A protocol that represents a unique identifier for queries
 /// Equivalent to TanStack Query's QueryKey (ReadonlyArray<unknown>)
-public protocol QueryKey: Sendable, Hashable, Codable {
+public protocol QueryKey: Sendable, Equatable {
     /// Convert the query key to a string hash for identification
     var queryHash: String { get }
 }
 
-/// Default QueryKey implementation using arrays of strings
-public struct ArrayQueryKey: QueryKey {
-    public let components: [String]
-
-    public init(_ components: String...) {
-        self.components = components
-    }
-
-    public init(_ components: [String]) {
-        self.components = components
-    }
-
+extension QueryKey where Self: Hashable & Codable {
     public var queryHash: String {
-        // Create a deterministic hash similar to TanStack Query's approach
-        guard let jsonData = try? JSONEncoder().encode(components.sorted()),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
-            return components.sorted().joined(separator: "|")
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.outputFormatting = .sortedKeys // stable output with key sorted
+        guard let jsonData = try? jsonEncoder.encode(self) else {
+            return "\(hashValue)"
         }
-        return jsonString
-    }
-}
-
-/// Generic QueryKey implementation for any Codable type
-public struct GenericQueryKey<T: Sendable & Codable & Hashable>: QueryKey {
-    public let value: T
-
-    public init(_ value: T) {
-        self.value = value
-    }
-
-    public var queryHash: String {
-        guard let jsonData = try? JSONEncoder().encode(value),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
-            return String(describing: value)
-        }
-        return jsonString
+        return String(decoding: jsonData, as: UTF8.self)
     }
 }
 
@@ -56,9 +28,61 @@ extension String: QueryKey {
     }
 }
 
-extension [String]: QueryKey {
-    public var queryHash: String {
-        // Create a deterministic hash by joining sorted components
-        sorted().joined(separator: "|")
+extension Array: QueryKey where Element: Hashable & Codable {}
+extension Dictionary: QueryKey where Key: Hashable & Codable, Value: Hashable & Codable {}
+
+public typealias QueryKeyCodable = Codable & Hashable & Sendable
+public struct KeyTuple2<K1: QueryKeyCodable, K2: QueryKeyCodable>: QueryKey, QueryKeyCodable {
+    public let key1: K1
+    public let key2: K2
+
+    public init(_ key1: K1, _ key2: K2) {
+        self.key1 = key1
+        self.key2 = key2
+    }
+
+    public init(_ key1: (some Any).Type, _ key2: K2) where K1 == String {
+        self.key1 = String(describing: key1)
+        self.key2 = key2
+    }
+}
+
+public struct KeyTuple3<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable>: QueryKey, QueryKeyCodable {
+    public let key1: K1
+    public let key2: K2
+    public let key3: K3
+
+    public init(_ key1: K1, _ key2: K2, _ key3: K3) {
+        self.key1 = key1
+        self.key2 = key2
+        self.key3 = key3
+    }
+
+    public init(_ key1: (some Any).Type, _ key2: K2, _ key3: K3) where K1 == String {
+        self.key1 = String(describing: key1)
+        self.key2 = key2
+        self.key3 = key3
+    }
+}
+
+public struct KeyTuple4<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable, K4: QueryKeyCodable>: QueryKey,
+    QueryKeyCodable {
+    public let key1: K1
+    public let key2: K2
+    public let key3: K3
+    public let key4: K4
+
+    public init(_ key1: K1, _ key2: K2, _ key3: K3, _ key4: K4) {
+        self.key1 = key1
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
+    }
+
+    public init(_ key1: (some Any).Type, _ key2: K2, _ key3: K3, _ key4: K4) where K1 == String {
+        self.key1 = String(describing: key1)
+        self.key2 = key2
+        self.key3 = key3
+        self.key4 = key4
     }
 }

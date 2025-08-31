@@ -5,34 +5,6 @@ import Foundation
 @Suite("Foundational Types Tests")
 @MainActor
 struct FoundationalTypesTests {
-    // MARK: - QueryKey Tests
-
-    @Test("ArrayQueryKey creates consistent hashes")
-    func arrayQueryKeyHashing() {
-        let key1 = ArrayQueryKey("users", "123")
-        let key2 = ArrayQueryKey("users", "123")
-        let key3 = ArrayQueryKey("users", "456")
-
-        #expect(key1.queryHash == key2.queryHash)
-        #expect(key1.queryHash != key3.queryHash)
-        #expect(key1 == key2)
-        #expect(key1 != key3)
-    }
-
-    @Test("GenericQueryKey works with different types")
-    func genericQueryKeyTypes() {
-        let stringKey = GenericQueryKey("test")
-        let intKey = GenericQueryKey(42)
-        let arrayKey = GenericQueryKey(["a", "b", "c"])
-
-        #expect(stringKey.value == "test")
-        #expect(intKey.value == 42)
-        #expect(arrayKey.value == ["a", "b", "c"])
-
-        // Different types should have different hashes
-        #expect(stringKey.queryHash != intKey.queryHash)
-    }
-
     // MARK: - Status Enum Tests
 
     @Test("QueryStatus enum values")

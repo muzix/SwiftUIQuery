@@ -425,6 +425,7 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     }
 
     /// Cancel any ongoing fetch operation
+    /// Note: This should only be called when explicitly requested or when no observers remain
     public func cancel() {
         fetchTask?.cancel()
         fetchTask = nil
@@ -463,15 +464,15 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         observers.removeAll { $0.id == observer.id }
 
         if observers.isEmpty {
-            // Cancel ongoing fetch if no observers and allow revert
-            if let revertState {
+            // If there's a revert state and we're currently fetching, revert to previous state
+            if let revertState, state.fetchStatus == .fetching {
                 setState(revertState)
                 self.revertState = nil
             }
 
-            // If the query is still fetching, let it continue to cache the result
-            // Only cancel if we can safely revert
-            if fetchTask != nil, revertState != nil {
+            // Cancel any ongoing fetch when no observers remain
+            // This prevents unnecessary network usage when no one is listening for the result
+            if fetchTask != nil {
                 fetchTask?.cancel()
                 fetchTask = nil
             }
@@ -527,12 +528,18 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     // MARK: - Fetch Implementation
 
     /// Internal fetch implementation that executes the query function
+    /// Implements request deduplication - if a fetch is already in progress,
+    /// returns the existing promise instead of starting a new one
     public func internalFetch() async throws -> TData {
+        // If we're already fetching, return the existing promise
+        // This implements request deduplication similar to TanStack Query
+        if let existingTask = fetchTask, state.fetchStatus == .fetching {
+            // Return the existing task's value - all callers share the same request
+            return try await existingTask.value
+        }
+
         // Store current state to revert if fetch is cancelled
         revertState = state
-
-        // Cancel any existing fetch
-        fetchTask?.cancel()
 
         // Update state to fetching
         dispatch(.fetch(meta: nil))

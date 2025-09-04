@@ -84,3 +84,145 @@ public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable, Equatable
         self.enabled = enabled
     }
 }
+
+// MARK: - KeyTuple Convenience Initializers
+
+extension QueryOptions {
+    /// Convenience initializer for KeyTuple2
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable>(
+        queryKey: KeyTuple2<K1, K2>,
+        queryFn: @escaping QueryFunction<TData, KeyTuple2<K1, K2>>,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .always,
+        initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true
+    ) where TKey == KeyTuple2<K1, K2> {
+        self.init(
+            queryKey: queryKey,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            initialData: initialData,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
+        )
+    }
+
+    /// Convenience initializer for KeyTuple3
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable>(
+        queryKey: KeyTuple3<K1, K2, K3>,
+        queryFn: @escaping QueryFunction<TData, KeyTuple3<K1, K2, K3>>,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .always,
+        initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true
+    ) where TKey == KeyTuple3<K1, K2, K3> {
+        self.init(
+            queryKey: queryKey,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            initialData: initialData,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
+        )
+    }
+
+    /// Convenience initializer for KeyTuple4
+    public init<K1: QueryKeyCodable, K2: QueryKeyCodable, K3: QueryKeyCodable, K4: QueryKeyCodable>(
+        queryKey: KeyTuple4<K1, K2, K3, K4>,
+        queryFn: @escaping QueryFunction<TData, KeyTuple4<K1, K2, K3, K4>>,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .always,
+        initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true
+    ) where TKey == KeyTuple4<K1, K2, K3, K4> {
+        self.init(
+            queryKey: queryKey,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            initialData: initialData,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
+        )
+    }
+
+    /// Convenience initializer for KeyTuple5
+    public init<
+        K1: QueryKeyCodable,
+        K2: QueryKeyCodable,
+        K3: QueryKeyCodable,
+        K4: QueryKeyCodable,
+        K5: QueryKeyCodable
+    >(
+        queryKey: KeyTuple5<K1, K2, K3, K4, K5>,
+        queryFn: @escaping QueryFunction<TData, KeyTuple5<K1, K2, K3, K4, K5>>,
+        retryConfig: RetryConfig = RetryConfig(),
+        networkMode: NetworkMode = .online,
+        staleTime: TimeInterval = 0,
+        gcTime: TimeInterval = defaultGcTime,
+        refetchTriggers: RefetchTriggers = .default,
+        refetchOnAppear: RefetchOnAppear = .always,
+        initialData: TData? = nil,
+        initialDataFunction: InitialDataFunction<TData>? = nil,
+        structuralSharing: Bool = true,
+        meta: QueryMeta? = nil,
+        enabled: Bool = true
+    ) where TKey == KeyTuple5<K1, K2, K3, K4, K5> {
+        self.init(
+            queryKey: queryKey,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
+            refetchOnAppear: refetchOnAppear,
+            initialData: initialData,
+            initialDataFunction: initialDataFunction,
+            structuralSharing: structuralSharing,
+            meta: meta,
+            enabled: enabled
+        )
+    }
+}

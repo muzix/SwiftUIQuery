@@ -260,14 +260,21 @@ public final class QueryClient {
         queryKey: TKey,
         data: TData
     ) -> Query<TData, TKey> {
+        let queryFn: QueryFunction<TData, TKey> = { _ in data }
+        let retryConfig = defaultOptions.queries?.retryConfig ?? RetryConfig()
+        let networkMode = defaultOptions.queries?.networkMode ?? .online
+        let staleTime = defaultOptions.queries?.staleTime ?? 0
+        let gcTime = defaultOptions.queries?.gcTime ?? defaultGcTime
+        let refetchTriggers = defaultOptions.queries?.refetchTriggers ?? .default
+
         let options = QueryOptions<TData, TKey>(
             queryKey: queryKey,
-            queryFn: { _ in data }, // Dummy function for imperative data setting
-            retryConfig: defaultOptions.queries?.retryConfig ?? RetryConfig(),
-            networkMode: defaultOptions.queries?.networkMode ?? .online,
-            staleTime: defaultOptions.queries?.staleTime ?? 0,
-            gcTime: defaultOptions.queries?.gcTime ?? defaultGcTime,
-            refetchTriggers: defaultOptions.queries?.refetchTriggers ?? .default,
+            queryFn: queryFn,
+            retryConfig: retryConfig,
+            networkMode: networkMode,
+            staleTime: staleTime,
+            gcTime: gcTime,
+            refetchTriggers: refetchTriggers,
             refetchOnAppear: .always,
             initialData: nil,
             initialDataFunction: nil,

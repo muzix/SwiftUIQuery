@@ -143,9 +143,6 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     /// Timer for stale timeout
     @PerceptionIgnored private nonisolated(unsafe) var staleTimer: Timer?
 
-    /// Timer for refetch interval
-    @PerceptionIgnored private nonisolated(unsafe) var refetchTimer: Timer?
-
     // MARK: - Initialization
 
     public init(client: QueryClient, options: QueryOptions<TData, TKey>) {
@@ -164,7 +161,6 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     deinit {
         // Clean up timers synchronously
         staleTimer?.invalidate()
-        refetchTimer?.invalidate()
     }
 
     // MARK: - Public Methods
@@ -238,13 +234,6 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
 
         // Clean up timers
         clearTimers()
-    }
-
-    /// Destroy the observer and clean up all resources
-    public func destroy() {
-        unsubscribe()
-        clearTimers()
-        currentQuery = nil
     }
 
     // MARK: - AnyQueryObserver Protocol
@@ -460,9 +449,6 @@ public final class QueryObserver<TData: Sendable, TKey: QueryKey>: AnyQueryObser
     private func clearTimers() {
         staleTimer?.invalidate()
         staleTimer = nil
-
-        refetchTimer?.invalidate()
-        refetchTimer = nil
     }
 }
 

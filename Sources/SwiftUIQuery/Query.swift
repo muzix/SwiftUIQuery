@@ -118,9 +118,6 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
     /// Current fetch task (if any)
     @PerceptionIgnored private nonisolated(unsafe) var fetchTask: Task<TData, Error>?
 
-    /// Whether the query has been destroyed
-    private var isDestroyed = false
-
     /// Timestamp when query became inactive (no active observers)
     private var inactiveAt: Date?
 
@@ -435,18 +432,6 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
         }
     }
 
-    /// Destroy the query and clean up resources
-    public func destroy() {
-        guard !isDestroyed else { return }
-        isDestroyed = true
-
-        cancel()
-        cleanup()
-
-        // Remove from cache
-        cache?.remove(self)
-    }
-
     // MARK: - Observer Management
 
     /// Add an observer to this query
@@ -736,14 +721,6 @@ public final class Query<TData: Sendable, TKey: QueryKey>: AnyQuery {
 
         // Remove from cache (let cache handle the cleanup)
         cache?.remove(self)
-    }
-
-    /// Clean up resources
-    private func cleanup() {
-        fetchTask?.cancel()
-        fetchTask = nil
-        observers.removeAll()
-        inactiveAt = nil
     }
 }
 

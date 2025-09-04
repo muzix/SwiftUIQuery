@@ -207,9 +207,6 @@ public final class InfiniteQueryObserver<
     /// Timer for stale timeout
     @PerceptionIgnored private nonisolated(unsafe) var staleTimer: Timer?
 
-    /// Timer for refetch interval
-    @PerceptionIgnored private nonisolated(unsafe) var refetchTimer: Timer?
-
     // MARK: - Initialization
 
     public init(client: QueryClient, options: InfiniteQueryOptions<TData, QueryError, TKey, TPageParam>) {
@@ -231,7 +228,6 @@ public final class InfiniteQueryObserver<
     deinit {
         // Clean up timers synchronously
         staleTimer?.invalidate()
-        refetchTimer?.invalidate()
     }
 
     // MARK: - Public Methods
@@ -337,13 +333,6 @@ public final class InfiniteQueryObserver<
 
         // Clean up timers
         clearTimers()
-    }
-
-    /// Destroy the observer and clean up all resources
-    public func destroy() {
-        unsubscribe()
-        clearTimers()
-        currentQuery = nil
     }
 
     // MARK: - AnyQueryObserver Protocol
@@ -537,8 +526,6 @@ public final class InfiniteQueryObserver<
     private func clearTimers() {
         staleTimer?.invalidate()
         staleTimer = nil
-        refetchTimer?.invalidate()
-        refetchTimer = nil
     }
 }
 

@@ -120,9 +120,6 @@ public final class InfiniteQuery<
     /// Current fetch task (if any)
     @PerceptionIgnored private nonisolated(unsafe) var fetchTask: Task<InfiniteData<TData, TPageParam>, Error>?
 
-    /// Whether the query has been destroyed
-    private var isDestroyed = false
-
     /// Timestamp when query became inactive (no active observers)
     private var inactiveAt: Date?
 
@@ -458,18 +455,6 @@ public final class InfiniteQuery<
         if state.fetchStatus == .fetching {
             dispatch(.setState(state: PartialQueryState(fetchStatus: .idle)))
         }
-    }
-
-    /// Destroy the query and clean up resources
-    public func destroy() {
-        guard !isDestroyed else { return }
-        isDestroyed = true
-
-        cancel()
-        cleanup()
-
-        // Remove from cache
-        cache?.remove(self)
     }
 
     // MARK: - Pagination Operations
@@ -892,15 +877,6 @@ public final class InfiniteQuery<
 
         // Remove from cache (let cache handle the cleanup)
         cache?.remove(self)
-    }
-
-    /// Clean up resources
-    private func cleanup() {
-        fetchTask?.cancel()
-        fetchTask = nil
-        observers.removeAll()
-        inactiveAt = nil
-        currentFetchDirection = nil
     }
 }
 

@@ -34,7 +34,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -55,7 +55,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -75,7 +75,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -104,7 +104,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -139,7 +139,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -162,7 +162,7 @@ struct UseInfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             }
         ) { _ in
@@ -186,7 +186,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -209,7 +209,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -244,7 +244,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -280,7 +280,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0,
@@ -298,7 +298,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0,
@@ -318,7 +318,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -339,7 +339,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getPreviousPageParam: { pages in
+            getPreviousPageParam: { pages, _ in
                 pages.first?.nextCursor // Simplified logic for testing
             },
             initialPageParam: 0
@@ -360,7 +360,7 @@ struct InfiniteQueryObserverTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -495,7 +495,7 @@ struct InfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -531,7 +531,7 @@ struct InfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getPreviousPageParam: { pages in
+            getPreviousPageParam: { pages, _ in
                 pages.first?.nextCursor // Simplified logic for testing
             },
             initialPageParam: 0
@@ -567,7 +567,7 @@ struct InfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -596,7 +596,7 @@ struct InfiniteQueryTests {
             queryFn: { _, cursor in
                 PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0
@@ -651,7 +651,7 @@ struct InfiniteQueryTests {
                 try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 return PostPage.create(start: cursor ?? 0, count: 10)
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 pages.last?.nextCursor
             },
             initialPageParam: 0

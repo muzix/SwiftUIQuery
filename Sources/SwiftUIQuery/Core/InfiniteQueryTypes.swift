@@ -10,12 +10,20 @@ public typealias InfiniteQueryFunction<TData: Sendable, TKey: QueryKey, TPagePar
     ) async throws -> TData
 
 /// Function to get the next page parameter
+/// Parameters:
+/// - pages: All pages of data that have been fetched
+/// - pageParams: All page parameters that have been used
+/// Returns: The next page parameter, or nil if there are no more pages
 public typealias GetNextPageParamFunction<TData: Sendable, TPageParam: Sendable & Codable> =
-    @Sendable ([TData]) -> TPageParam?
+    @Sendable ([TData], [TPageParam]) -> TPageParam?
 
 /// Function to get the previous page parameter
+/// Parameters:
+/// - pages: All pages of data that have been fetched
+/// - pageParams: All page parameters that have been used
+/// Returns: The previous page parameter, or nil if there are no more pages
 public typealias GetPreviousPageParamFunction<TData: Sendable, TPageParam: Sendable & Codable> =
-    @Sendable ([TData]) -> TPageParam?
+    @Sendable ([TData], [TPageParam]) -> TPageParam?
 
 /// Configuration options for infinite queries
 /// Equivalent to TanStack Query's InfiniteQueryOptions

@@ -186,7 +186,7 @@ struct KeyTupleTests {
                 let page = pageParam ?? 0
                 return [Post(id: page, title: "Post \(page)")]
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 return pages.count < 3 ? pages.count : nil
             },
             initialPageParam: 0
@@ -338,7 +338,7 @@ struct KeyTupleTests {
                 let page = pageParam ?? 0
                 return [Item(id: page, name: "\(key.key2) item \(page)")]
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 return pages.count < 3 ? pages.count : nil
             },
             initialPageParam: 0
@@ -379,7 +379,7 @@ struct KeyTupleTests {
                 let page = pageParam ?? 0
                 return [Review(id: page, rating: key.key4)]
             },
-            getNextPageParam: { pages in
+            getNextPageParam: { pages, _ in
                 return pages.count < 2 ? pages.count : nil
             },
             initialPageParam: 0

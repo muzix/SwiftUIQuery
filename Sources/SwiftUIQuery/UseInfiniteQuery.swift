@@ -16,7 +16,8 @@ public struct UseInfiniteQueryResult<TData: Sendable, TPageParam: Sendable & Cod
     /// Fetch next page function
     private let _fetchNextPage: @Sendable () async -> InfiniteQueryObserverResult<TData, TPageParam>
     /// Fetch previous page function
-    private let _fetchPreviousPage: @Sendable () async -> InfiniteQueryObserverResult<TData, TPageParam>
+    private let _fetchPreviousPage: @Sendable ()
+        async -> InfiniteQueryObserverResult<TData, TPageParam>
 
     init(
         result: InfiniteQueryObserverResult<TData, TPageParam>,

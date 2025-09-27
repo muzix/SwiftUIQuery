@@ -467,7 +467,8 @@ public final class InfiniteQuery<
             return nil
         }
 
-        return getNextPageParam(data.pages)
+        let params = data.pageParams.compactMap(\.self)
+        return getNextPageParam(data.pages, params)
     }
 
     /// Get the previous page parameter from current data
@@ -478,7 +479,8 @@ public final class InfiniteQuery<
             return nil
         }
 
-        return getPreviousPageParam(data.pages)
+        let params = data.pageParams.compactMap(\.self)
+        return getPreviousPageParam(data.pages, params)
     }
 
     /// Check if there are more pages available in the forward direction

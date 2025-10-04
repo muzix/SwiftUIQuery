@@ -11,7 +11,7 @@ struct KeyTupleTests {
         let options = QueryOptions<String, KeyTuple2<String, Int>>(
             queryKey: key,
             queryFn: { (key: KeyTuple2<String, Int>) async throws -> String in
-                return "User \(key.key2)"
+                "User \(key.key2)"
             }
         )
 
@@ -27,7 +27,7 @@ struct KeyTupleTests {
         let options = QueryOptions<String, KeyTuple3<String, Int, Bool>>(
             queryKey: key,
             queryFn: { (key: KeyTuple3<String, Int, Bool>) async throws -> String in
-                return "User \(key.key2) active: \(key.key3)"
+                "User \(key.key2) active: \(key.key3)"
             }
         )
 
@@ -44,7 +44,7 @@ struct KeyTupleTests {
         let options = QueryOptions<String, KeyTuple4<String, Int, Bool, String>>(
             queryKey: key,
             queryFn: { (key: KeyTuple4<String, Int, Bool, String>) async throws -> String in
-                return "User \(key.key2) active: \(key.key3) role: \(key.key4)"
+                "User \(key.key2) active: \(key.key3) role: \(key.key4)"
             }
         )
 
@@ -70,7 +70,7 @@ struct KeyTupleTests {
         let options = QueryOptions<User, KeyTuple2<String, Int>>(
             queryKey: key,
             queryFn: { (key: KeyTuple2<String, Int>) async throws -> User in
-                return User(id: key.key2, name: "Test User")
+                User(id: key.key2, name: "Test User")
             }
         )
 
@@ -93,7 +93,7 @@ struct KeyTupleTests {
         let options = QueryOptions<Post, KeyTuple3<String, Int, String>>(
             queryKey: key,
             queryFn: { (key: KeyTuple3<String, Int, String>) async throws -> Post in
-                return Post(id: key.key2, title: "Post \(key.key3)")
+                Post(id: key.key2, title: "Post \(key.key3)")
             }
         )
 
@@ -117,7 +117,7 @@ struct KeyTupleTests {
         let options = QueryOptions<Comment, KeyTuple4<String, Int, String, Bool>>(
             queryKey: key,
             queryFn: { (key: KeyTuple4<String, Int, String, Bool>) async throws -> Comment in
-                return Comment(id: key.key2, text: "Comment from \(key.key3)")
+                Comment(id: key.key2, text: "Comment from \(key.key3)")
             }
         )
 
@@ -187,7 +187,7 @@ struct KeyTupleTests {
                 return [Post(id: page, title: "Post \(page)")]
             },
             getNextPageParam: { pages, _ in
-                return pages.count < 3 ? pages.count : nil
+                pages.count < 3 ? pages.count : nil
             },
             initialPageParam: 0
         )
@@ -204,7 +204,7 @@ struct KeyTupleTests {
         let options = QueryOptions<String, KeyTuple5<String, Int, Bool, String, Double>>(
             queryKey: key,
             queryFn: { (key: KeyTuple5<String, Int, Bool, String, Double>) async throws -> String in
-                return "User \(key.key2) active: \(key.key3) role: \(key.key4) score: \(key.key5)"
+                "User \(key.key2) active: \(key.key3) role: \(key.key4) score: \(key.key5)"
             }
         )
 
@@ -223,7 +223,7 @@ struct KeyTupleTests {
         let options = QueryOptions<String, KeyTuple6<String, Int, String, Bool, Int, String>>(
             queryKey: key,
             queryFn: { (key: KeyTuple6<String, Int, String, Bool, Int, String>) async throws -> String in
-                return "Post \(key.key2) status: \(key.key3) active: \(key.key4) priority: \(key.key5) type: \(key.key6)"
+                "Post \(key.key2) status: \(key.key3) active: \(key.key4) priority: \(key.key5) type: \(key.key6)"
             }
         )
 
@@ -254,7 +254,7 @@ struct KeyTupleTests {
         let options = QueryOptions<Order, KeyTuple5<String, Int, String, Bool, Double>>(
             queryKey: key,
             queryFn: { (key: KeyTuple5<String, Int, String, Bool, Double>) async throws -> Order in
-                return Order(id: key.key2, status: key.key3)
+                Order(id: key.key2, status: key.key3)
             }
         )
 
@@ -280,7 +280,7 @@ struct KeyTupleTests {
         let options = QueryOptions<Product, KeyTuple6<String, Int, String, Bool, Double, String>>(
             queryKey: key,
             queryFn: { (key: KeyTuple6<String, Int, String, Bool, Double, String>) async throws -> Product in
-                return Product(id: key.key2, name: "Product \(key.key6)")
+                Product(id: key.key2, name: "Product \(key.key6)")
             }
         )
 
@@ -339,7 +339,7 @@ struct KeyTupleTests {
                 return [Item(id: page, name: "\(key.key2) item \(page)")]
             },
             getNextPageParam: { pages, _ in
-                return pages.count < 3 ? pages.count : nil
+                pages.count < 3 ? pages.count : nil
             },
             initialPageParam: 0
         )
@@ -380,7 +380,7 @@ struct KeyTupleTests {
                 return [Review(id: page, rating: key.key4)]
             },
             getNextPageParam: { pages, _ in
-                return pages.count < 2 ? pages.count : nil
+                pages.count < 2 ? pages.count : nil
             },
             initialPageParam: 0
         )

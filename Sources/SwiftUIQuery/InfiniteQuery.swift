@@ -867,15 +867,11 @@ public final class InfiniteQuery<
     public func optionalRemove() {
         // Only remove if query has no observers and is eligible for GC
         guard observers.isEmpty, state.fetchStatus == .idle, isEligibleForGC else {
-            #if DEBUG
-                print("🗑️ SwiftUI Query: GC cancelled for \(queryHash) - Query is active or not eligible")
-            #endif
+            QueryLogger.shared.logGCCancelled(hash: queryHash)
             return
         }
 
-        #if DEBUG
-            print("🗑️ SwiftUI Query: Executing GC for \(queryHash)")
-        #endif
+        QueryLogger.shared.logGCExecuting(hash: queryHash)
 
         // Remove from cache (let cache handle the cleanup)
         cache?.remove(self)

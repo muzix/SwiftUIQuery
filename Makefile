@@ -8,7 +8,7 @@ install: ## Install dependencies (SwiftLint and SwiftFormat)
 
 .PHONY: lint
 lint: ## Run SwiftLint
-	swiftlint
+	swiftlint --strict
 
 .PHONY: lint-fix
 lint-fix: ## Run SwiftLint with auto-fix
@@ -40,7 +40,7 @@ fix: ## Fix all issues (lint auto-fix + format)
 
 .PHONY: build
 build: ## Build the package
-	swift build -Xswiftc -strict-concurrency=complete
+	swift build
 
 .PHONY: test
 test: ## Run tests

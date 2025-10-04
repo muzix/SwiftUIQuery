@@ -24,18 +24,12 @@ let package = Package(
             name: "SwiftUIQuery",
             dependencies: [
                 .product(name: "Perception", package: "swift-perception")
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
             ]
         ),
         .testTarget(
             name: "SwiftUIQueryTests",
             dependencies: [
                 "SwiftUIQuery",
-            ],
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency")
             ]
         ),
     ]

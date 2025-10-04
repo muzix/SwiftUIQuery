@@ -1,5 +1,10 @@
 # SwiftUI Query
 
+[![Tests](https://github.com/muzix/swiftui-query/actions/workflows/tests.yml/badge.svg)](https://github.com/muzix/swiftui-query/actions/workflows/tests.yml)
+[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
+[![Platforms](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://swift.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 A Swift implementation of [TanStack Query](https://tanstack.com/query) for SwiftUI applications, providing powerful asynchronous state management with caching, synchronization, and infinite queries.
 
 > **Inspired by TanStack Query** - This library brings the beloved patterns and features of TanStack Query (formerly React Query) to the Swift ecosystem, adapted for SwiftUI and Swift's concurrency model.

@@ -190,7 +190,6 @@ public struct UseInfiniteQuery<
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -208,7 +207,6 @@ public struct UseInfiniteQuery<
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -227,7 +225,6 @@ public struct UseInfiniteQuery<
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -319,7 +316,6 @@ extension UseInfiniteQuery {
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -337,7 +333,6 @@ extension UseInfiniteQuery {
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -356,7 +351,6 @@ extension UseInfiniteQuery {
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -382,7 +376,6 @@ extension UseInfiniteQuery {
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -400,7 +393,6 @@ extension UseInfiniteQuery {
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -419,7 +411,6 @@ extension UseInfiniteQuery {
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -445,7 +436,6 @@ extension UseInfiniteQuery {
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -463,7 +453,6 @@ extension UseInfiniteQuery {
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -482,7 +471,6 @@ extension UseInfiniteQuery {
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -508,7 +496,6 @@ extension UseInfiniteQuery {
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -532,7 +519,6 @@ extension UseInfiniteQuery {
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -551,7 +537,6 @@ extension UseInfiniteQuery {
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -577,7 +562,6 @@ extension UseInfiniteQuery {
     ///   - gcTime: Time before unused data is garbage collected (default: 5 minutes)
     ///   - refetchTriggers: Configuration for automatic refetching triggers (default: .default)
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -602,7 +586,6 @@ extension UseInfiniteQuery {
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .ifStale,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -621,7 +604,6 @@ extension UseInfiniteQuery {
             gcTime: gcTime,
             refetchTriggers: refetchTriggers,
             refetchOnAppear: refetchOnAppear,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )

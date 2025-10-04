@@ -317,7 +317,6 @@ struct UseQueryTests {
         #expect(options.gcTime == 600)
         #expect(options.enabled == false)
         #expect(options.refetchOnAppear == RefetchOnAppear.ifStale)
-        #expect(options.structuralSharing == true)
         #expect(options.networkMode == NetworkMode.online)
     }
 

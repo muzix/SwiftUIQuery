@@ -57,8 +57,6 @@ public struct InfiniteQueryOptions<
     public let refetchTriggers: RefetchTriggers
     /// Specific behavior for view appear events
     public let refetchOnAppear: RefetchOnAppear
-    /// Whether to use structural sharing for performance
-    public let structuralSharing: Bool
     /// Arbitrary metadata for this query
     public let meta: QueryMeta?
     /// Whether this query is enabled (will fetch automatically)
@@ -91,7 +89,6 @@ public struct InfiniteQueryOptions<
         gcTime: TimeInterval = defaultGcTime,
         refetchTriggers: RefetchTriggers = .default,
         refetchOnAppear: RefetchOnAppear = .always,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) {
@@ -107,7 +104,6 @@ public struct InfiniteQueryOptions<
         self.gcTime = gcTime
         self.refetchTriggers = refetchTriggers
         self.refetchOnAppear = refetchOnAppear
-        self.structuralSharing = structuralSharing
         self.meta = meta
         self.enabled = enabled
     }

@@ -105,7 +105,6 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -121,7 +120,6 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -138,7 +136,6 @@ public struct UseQuery<TData: Sendable, TKey: QueryKey, Content: View>: View {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -203,7 +200,6 @@ extension UseQuery {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -219,7 +215,6 @@ extension UseQuery {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -236,7 +231,6 @@ extension UseQuery {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -261,7 +255,6 @@ extension UseQuery {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -277,7 +270,6 @@ extension UseQuery {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -294,7 +286,6 @@ extension UseQuery {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -319,7 +310,6 @@ extension UseQuery {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -335,7 +325,6 @@ extension UseQuery {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -352,7 +341,6 @@ extension UseQuery {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -377,7 +365,6 @@ extension UseQuery {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -399,7 +386,6 @@ extension UseQuery {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -416,7 +402,6 @@ extension UseQuery {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -441,7 +426,6 @@ extension UseQuery {
     ///   - refetchOnAppear: When to refetch data on view appear (default: .ifStale)
     ///   - initialData: Initial data to show while the query loads
     ///   - initialDataFunction: Function to provide initial data
-    ///   - structuralSharing: Whether to use structural sharing for performance (default: true)
     ///   - meta: Arbitrary metadata for this query
     ///   - enabled: Whether the query should execute automatically (default: true)
     ///   - queryClient: Optional query client (uses shared instance if nil)
@@ -464,7 +448,6 @@ extension UseQuery {
         refetchOnAppear: RefetchOnAppear = .ifStale,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true,
         queryClient: QueryClient? = nil,
@@ -481,7 +464,6 @@ extension UseQuery {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -520,7 +502,6 @@ extension UseQuery {
                 refetchOnAppear: RefetchOnAppear.ifStale,
                 initialData: nil as TData?,
                 initialDataFunction: nil as InitialDataFunction<TData>?,
-                structuralSharing: true,
                 meta: nil as QueryMeta?,
                 enabled: true
             )
@@ -550,7 +531,6 @@ extension UseQuery {
                 refetchOnAppear: RefetchOnAppear.ifStale,
                 initialData: nil as TData?,
                 initialDataFunction: nil as InitialDataFunction<TData>?,
-                structuralSharing: true,
                 meta: nil as QueryMeta?,
                 enabled: true
             )
@@ -578,7 +558,6 @@ extension UseQuery {
                 refetchOnAppear: RefetchOnAppear.ifStale,
                 initialData: nil as TData?,
                 initialDataFunction: nil as InitialDataFunction<TData>?,
-                structuralSharing: true,
                 meta: nil as QueryMeta?,
                 enabled: true
             )

@@ -38,8 +38,6 @@ public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable, Equatable
     public let initialData: TData?
     /// Function to provide initial data
     public let initialDataFunction: InitialDataFunction<TData>?
-    /// Whether to use structural sharing for performance
-    public let structuralSharing: Bool
     /// Arbitrary metadata for this query
     public let meta: QueryMeta?
     /// Whether this query is enabled (will fetch automatically)
@@ -65,7 +63,6 @@ public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable, Equatable
         refetchOnAppear: RefetchOnAppear = .always,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) {
@@ -79,7 +76,6 @@ public struct QueryOptions<TData: Sendable, TKey: QueryKey>: Sendable, Equatable
         self.refetchOnAppear = refetchOnAppear
         self.initialData = initialData
         self.initialDataFunction = initialDataFunction
-        self.structuralSharing = structuralSharing
         self.meta = meta
         self.enabled = enabled
     }
@@ -100,7 +96,6 @@ extension QueryOptions {
         refetchOnAppear: RefetchOnAppear = .always,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) where TKey == KeyTuple2<K1, K2> {
@@ -115,7 +110,6 @@ extension QueryOptions {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -133,7 +127,6 @@ extension QueryOptions {
         refetchOnAppear: RefetchOnAppear = .always,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) where TKey == KeyTuple3<K1, K2, K3> {
@@ -148,7 +141,6 @@ extension QueryOptions {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -166,7 +158,6 @@ extension QueryOptions {
         refetchOnAppear: RefetchOnAppear = .always,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) where TKey == KeyTuple4<K1, K2, K3, K4> {
@@ -181,7 +172,6 @@ extension QueryOptions {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )
@@ -205,7 +195,6 @@ extension QueryOptions {
         refetchOnAppear: RefetchOnAppear = .always,
         initialData: TData? = nil,
         initialDataFunction: InitialDataFunction<TData>? = nil,
-        structuralSharing: Bool = true,
         meta: QueryMeta? = nil,
         enabled: Bool = true
     ) where TKey == KeyTuple5<K1, K2, K3, K4, K5> {
@@ -220,7 +209,6 @@ extension QueryOptions {
             refetchOnAppear: refetchOnAppear,
             initialData: initialData,
             initialDataFunction: initialDataFunction,
-            structuralSharing: structuralSharing,
             meta: meta,
             enabled: enabled
         )

@@ -278,7 +278,6 @@ public final class QueryClient {
             refetchOnAppear: .always,
             initialData: nil,
             initialDataFunction: nil,
-            structuralSharing: true,
             meta: nil,
             enabled: true
         )
@@ -484,7 +483,6 @@ public final class QueryClient {
             refetchOnAppear: options.refetchOnAppear,
             initialData: options.initialData,
             initialDataFunction: options.initialDataFunction,
-            structuralSharing: options.structuralSharing,
             meta: options.meta,
             enabled: options.enabled
         )
@@ -509,7 +507,6 @@ public final class QueryClient {
             gcTime: defaults.gcTime ?? options.gcTime,
             refetchTriggers: defaults.refetchTriggers ?? options.refetchTriggers,
             refetchOnAppear: options.refetchOnAppear,
-            structuralSharing: options.structuralSharing,
             meta: options.meta,
             enabled: options.enabled
         )

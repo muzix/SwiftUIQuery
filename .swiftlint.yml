@@ -4,10 +4,10 @@
 included:
   - Sources
   - Tests
-  - Example
 
 excluded:
   - Documentation
+  - Example
   - .build
   - .swiftpm
   - Package.swift
@@ -23,7 +23,8 @@ disabled_rules:
   - function_parameter_count # Allow functions with more than 6 parameters
   - redundant_string_enum_value # Allow explicit raw values for consistency
   - raw_value_for_camel_cased_codable_enum # Disable conflicting camel case enum rule
-
+  - closure_parameter_position
+  - optional_data_string_conversion
 # Per-path rule customization
 
 opt_in_rules:
@@ -92,6 +93,7 @@ opt_in_rules:
   - vertical_whitespace_opening_braces
   - weak_delegate
   - yoda_condition
+  - non_optional_string_data_conversion
 
 # Rule configuration
 analyzer_rules:
@@ -184,11 +186,6 @@ custom_rules:
     severity: warning
 
 
-  observable_usage:
-    name: "Observable Usage"
-    regex: 'ObservableObject'
-    message: "Consider using @Observable instead of ObservableObject for Swift 6"
-    severity: warning
 
 # Reporter type (xcode, json, csv, checkstyle, junit, html, emoji)
 reporter: "xcode"

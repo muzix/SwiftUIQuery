@@ -49,9 +49,7 @@ public final class GarbageCollector {
 
         isRunning = true
 
-        #if DEBUG
-            print("🗑️ SwiftUI Query: Starting GarbageCollector with \(interval)s interval")
-        #endif
+        QueryLogger.shared.logGCStart(interval: interval)
 
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -68,9 +66,7 @@ public final class GarbageCollector {
         timer?.invalidate()
         timer = nil
 
-        #if DEBUG
-            print("🗑️ SwiftUI Query: Stopping GarbageCollector")
-        #endif
+        QueryLogger.shared.logGCStop()
     }
 
     /// Register a query cache for garbage collection monitoring
@@ -132,22 +128,16 @@ public final class GarbageCollector {
             for query in inactiveQueries {
                 cache.remove(query)
                 removedQueries += 1
-
-                #if DEBUG
-                    print("🗑️ SwiftUI Query: GC removed inactive query \(query.queryHash)")
-                #endif
+                QueryLogger.shared.logGCRemoving(hash: query.queryHash, reason: "inactive query")
             }
         }
 
         let duration = Date().timeIntervalSince(startTime)
 
-        #if DEBUG
-            if removedQueries > 0 {
-                print(
-                    "🗑️ SwiftUI Query: GC completed - removed \(removedQueries)/\(totalQueries) queries in \(String(format: "%.2f", duration * 1000))ms"
-                )
-            }
-        #endif
+        if removedQueries > 0 {
+            let reason = "removed \(removedQueries)/\(totalQueries) queries in \(String(format: "%.2f", duration * 1000))ms"
+            QueryLogger.shared.logGCRemoving(hash: "GC-Complete", reason: reason)
+        }
     }
 
     /// Check if a query is eligible for garbage collection

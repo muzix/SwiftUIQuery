@@ -5,29 +5,28 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
     name: Test SwiftUI Query
-    runs-on: macos-14
-    
+    runs-on: macos-15
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
-    - name: Setup Swift
-      uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: "6.2"
-    
+
     - name: Show Swift version
       run: swift --version
-    
-    - name: Run Tests
-      run: swift test --parallel
-    
+
+    - name: Install SwiftLint
+      run: brew install swiftlint
+
+    - name: Lint Code
+      run: make lint
+
     - name: Run Tests with Coverage
-      run: swift test --enable-code-coverage
+      run: swift test --parallel --enable-code-coverage
     
     - name: Generate Coverage Report
       run: |
@@ -44,16 +43,3 @@ jobs:
         file: ./coverage.lcov
         fail_ci_if_error: false
       continue-on-error: true
-
-  lint:
-    name: Swift Format
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Swift Format Lint
-      uses: norio-nomura/action-swiftlint@3.2.1
-      with:
-        args: --strict

@@ -1,26 +1,6 @@
 import Testing
 @testable import SwiftUIQuery
 
-@Suite("SwiftUI Query Main Test Suite")
-@MainActor
-struct SwiftUIQueryTests {
-    @Test("Library initialization")
-    func libraryInitialization() {
-        // Basic test to ensure the library compiles and can be imported
-        #expect(true)
-    }
-
-    @Test("Swift 6 concurrency compliance")
-    func swift6ConcurrencyCompliance() {
-        // This test suite verifies that our library works with
-        // Swift 6's strict concurrency checking enabled
-
-        // The fact that this compiles with -strict-concurrency=complete
-        // means we're compliant
-        #expect(true)
-    }
-}
-
 // MARK: - Example of parameterized tests
 
 @Suite("Parameterized Tests Example")

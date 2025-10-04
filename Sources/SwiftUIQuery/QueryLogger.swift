@@ -28,6 +28,9 @@ public final class QueryLogger {
     /// Enable/disable QueryObserver cache interaction logging
     public var logQueryObserver = true
 
+    /// Enable/disable GarbageCollector logging
+    public var logGarbageCollector = true
+
     private init() {}
 
     // MARK: - Logging Methods
@@ -115,6 +118,38 @@ public final class QueryLogger {
         guard isEnabled, logQueryObserver else { return }
         print("📊 QueryObserver reading query state for hash: \(hash)")
     }
+
+    // MARK: - Garbage Collector Logging
+
+    /// Log GarbageCollector starting
+    func logGCStart(interval: TimeInterval) {
+        guard isEnabled, logGarbageCollector else { return }
+        print("🗑️ SwiftUI Query: Starting GarbageCollector with \(interval)s interval")
+    }
+
+    /// Log GarbageCollector stopping
+    func logGCStop() {
+        guard isEnabled, logGarbageCollector else { return }
+        print("🗑️ SwiftUI Query: Stopping GarbageCollector")
+    }
+
+    /// Log GC cancelled for active query
+    func logGCCancelled(hash: String) {
+        guard isEnabled, logGarbageCollector else { return }
+        print("🗑️ SwiftUI Query: GC cancelled for \(hash) - Query is active or not eligible")
+    }
+
+    /// Log GC executing for query
+    func logGCExecuting(hash: String) {
+        guard isEnabled, logGarbageCollector else { return }
+        print("🗑️ SwiftUI Query: Executing GC for \(hash)")
+    }
+
+    /// Log GC removing query
+    func logGCRemoving(hash: String, reason: String) {
+        guard isEnabled, logGarbageCollector else { return }
+        print("🗑️ SwiftUI Query: GC removing \(hash) - \(reason)")
+    }
 }
 
 // MARK: - Public API Extensions
@@ -126,6 +161,7 @@ extension QueryLogger {
         logQueryClient = true
         logQuery = true
         logQueryObserver = true
+        logGarbageCollector = true
     }
 
     /// Disable all cache logging (convenience method)
@@ -157,3 +193,5 @@ extension QueryLogger {
         logQueryObserver = true
     }
 }
+
+// swiftlint:enable no_print_statements
